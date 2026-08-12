@@ -3,11 +3,11 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace AvatarAnimation
+namespace AvatarAnimator
 {
     public class Const
     {
-        public static string prefix = "AvatarAnimation=";
+        public static string prefix = "AvatarAnimator=";
     }
 
     public enum InputType
@@ -46,7 +46,7 @@ namespace AvatarAnimation
     }
 
     [Serializable]
-    public class AvatarAnimationJson
+    public class AvatarAnimatorJson
     {
         public Dictionary<string, StateNode> states; // Name -> State
         public string startState;

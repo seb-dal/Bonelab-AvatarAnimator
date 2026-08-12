@@ -6,7 +6,7 @@ using Il2CppSLZ.Marrow;
 using Newtonsoft.Json;
 using UnityEngine.InputSystem.XR;
 
-namespace AvatarAnimation
+namespace AvatarAnimator
 {
     public static class BuildInfo
     {
@@ -27,7 +27,7 @@ namespace AvatarAnimation
         // Disable OnUpdate() execution
         private bool enabled = false;
         // AnimatorController json graph of the current Avatar
-        private AvatarAnimationJson graph = null;
+        private AvatarAnimatorJson graph = null;
         // Current State of AnimatorController graph of the current Avatar
         private StateNode currentState = null;
         private string currentStateName;
@@ -110,7 +110,7 @@ namespace AvatarAnimation
                 if (param.name.StartsWith(Const.prefix))
                 {
                     string json = param.name.Substring(Const.prefix.Length);
-                    graph = JsonConvert.DeserializeObject<AvatarAnimationJson>(json);
+                    graph = JsonConvert.DeserializeObject<AvatarAnimatorJson>(json);
                     setCurentState(graph.startState);
                     Logger.Msg("Animator Controller Json Data found");
                     break;

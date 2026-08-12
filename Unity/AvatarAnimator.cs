@@ -9,25 +9,25 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 
-namespace AvatarAnimation
+namespace AvatarAnimator
 {
-    [CustomEditor(typeof(AvatarAnimation))]
-    public class AvatarAnimation : EditorWindow
+    [CustomEditor(typeof(AvatarAnimator))]
+    public class AvatarAnimator : EditorWindow
     {
         [SerializeField]
         public Animator anim;
 
-        [MenuItem("Tools/AvatarAnimation")]
+        [MenuItem("Tools/AvatarAnimator")]
         static void Init()
         {
-            AvatarAnimation window = (AvatarAnimation)GetWindow(typeof(AvatarAnimation));
+            AvatarAnimator window = (AvatarAnimator)GetWindow(typeof(AvatarAnimator));
         }
 
         void OnGUI()
         {
             anim = (Animator)EditorGUILayout.ObjectField(anim, typeof(Animator), true);
 
-            if (GUILayout.Button("Add or Update AvatarAnimation data"))
+            if (GUILayout.Button("Add or Update AvatarAnimator data"))
             {
                 Patch();
             }
@@ -36,7 +36,7 @@ namespace AvatarAnimation
 
         /// <summary>
         /// 
-        /// The mod AvatarAnimation need the entier AnimatorController graph but when packing Pallet Il2Cpp doesn't give acces to it anymore.
+        /// The mod AvatarAnimator need the entier AnimatorController graph but when packing Pallet Il2Cpp doesn't give acces to it anymore.
         /// So the Graph must be store in something that we can still have acces after packing.
         /// This may seem dirty but storing the graph in a parameter name 
         ///  - Doesn't break anything and easily reversable.
@@ -48,7 +48,7 @@ namespace AvatarAnimation
         /// </summary>
         public void Patch()
         {
-            AvatarAnimationJson jsonClass = new()
+            AvatarAnimatorJson jsonClass = new()
             {
                 states = new Dictionary<string, StateNode>(),
                 startState = ""
@@ -115,7 +115,7 @@ namespace AvatarAnimation
                 }
                 string json = Const.prefix + JsonConvert.SerializeObject(jsonClass, Formatting.None);
                 ac.AddParameter(json, AnimatorControllerParameterType.Trigger);
-                Debug.Log("AvatarAnimation data has been updated in Controller Parameters");
+                Debug.Log("AvatarAnimator data has been updated in Controller Parameters");
             }
             else
             {
