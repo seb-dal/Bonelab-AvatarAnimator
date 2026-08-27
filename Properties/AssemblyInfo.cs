@@ -2,6 +2,12 @@
 using System.Reflection;
 using System.Runtime.InteropServices;
 using MelonLoader;
+using System.Runtime.CompilerServices;
+using System.Diagnostics;
+
+[assembly: CompilationRelaxations(8)]
+[assembly: RuntimeCompatibility(WrapNonExceptionThrows = true)]
+[assembly: Debuggable(DebuggableAttribute.DebuggingModes.IgnoreSymbolStoreSequencePoints)]
 
 [assembly: AssemblyTitle(AvatarAnimator.BuildInfo.Name)]
 [assembly: AssemblyDescription("")]
@@ -12,9 +18,10 @@ using MelonLoader;
 [assembly: AssemblyTrademark(AvatarAnimator.BuildInfo.Company)]
 [assembly: AssemblyCulture("")]
 [assembly: ComVisible(false)]
-//[assembly: Guid("")]
+
 [assembly: AssemblyVersion(AvatarAnimator.BuildInfo.Version)]
 [assembly: AssemblyFileVersion(AvatarAnimator.BuildInfo.Version)]
 [assembly: NeutralResourcesLanguage("en")]
+
 [assembly: MelonInfo(typeof(AvatarAnimator.Core), AvatarAnimator.BuildInfo.Name, AvatarAnimator.BuildInfo.Version, AvatarAnimator.BuildInfo.Author, AvatarAnimator.BuildInfo.DownloadLink)]
-[assembly: MelonGame(null, null)]
+[assembly: MelonOptionalDependencies(new string[] { "LabFusion" })]
