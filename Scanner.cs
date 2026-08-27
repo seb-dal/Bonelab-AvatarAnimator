@@ -18,6 +18,7 @@ namespace AvatarAnimator
         protected AvatarAnimatorDataContainer m_Cont;
         protected Il2CppSLZ.VRMK.Avatar m_Avatar;
         protected RigManager m_RigManager;
+        protected Barcode m_Barcode;
         protected ScannedDataSources m_Source;
         protected Mirror m_Mirror = null;
         protected byte m_id;
@@ -44,7 +45,7 @@ namespace AvatarAnimator
         public bool HasAvatarAnimatorData { get => null != m_Cont?.m_Data; }
         public Il2CppSLZ.VRMK.Avatar Avatar { get => m_Avatar; }
         public RigManager RigManager { get => m_RigManager; }
-        public Barcode Barcode { get => m_RigManager?.AvatarCrate.Barcode; }
+        public Barcode Barcode { get => m_Barcode; }
         public ScannedDataSources Source { get => m_Source; }
         public Mirror Mirror { get => m_Mirror; }
         public byte Id { get => m_id; }
@@ -67,6 +68,7 @@ namespace AvatarAnimator
         public void UpdateAvatar()
         {
             SetAvatar();
+            m_Barcode = m_RigManager.AvatarCrate.Barcode;
             m_Cont = m_Avatar.gameObject.GetComponentInChildren<AvatarAnimatorDataContainer>();
             if (null != m_Cont)
             {

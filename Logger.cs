@@ -17,6 +17,8 @@ namespace AvatarAnimator
             public void Info(string msg) { Log(ConsoleColor.Cyan, msg); }
             /// <summary> For Coding temporary logs that need to be more visible that other logs </summary>
             public void Highlight(string msg) { Log(ConsoleColor.DarkRed, msg); }
+            /// <summary> For when you need to know how you manage to get here (i mean in the code) </summary>
+            public void StackTrace() { Log(ConsoleColor.DarkRed, (new System.Diagnostics.StackTrace()).ToString()); }
         }
 
         private static MelonLogger.Instance m_Logger;
