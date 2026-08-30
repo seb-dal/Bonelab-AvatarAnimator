@@ -59,16 +59,6 @@ namespace AvatarAnimator
                     Logger.Dbg.Info("PlayerAvatarChange: Current Animator doesn't have data");
                     return;
                 }
-                int i = 0;
-                foreach (var layer in m_player.Data.ListLayer)
-                {
-                    m_Layers.Add(new(layer.LayerIndex));
-                    m_LayerIndexToIndex.Add(layer.LayerIndex, i);
-                    SetCurentState(layer.LayerIndex, layer.StartState, false);
-                    i += 1;
-                }
-                // Avatar change in front of a mirror
-                foreach (var mirror in m_mirrorAnimators) { mirror.UpdateAvatar(); }
                 // Initialise Values
                 foreach (var trans in m_player.Data.TransitionsData)
                 {
@@ -84,6 +74,17 @@ namespace AvatarAnimator
                         default: break;
                     }
                 }
+                // Initialise and get layers/states values 
+                int i = 0;
+                foreach (var layer in m_player.Data.ListLayer)
+                {
+                    m_Layers.Add(new(layer.LayerIndex));
+                    m_LayerIndexToIndex.Add(layer.LayerIndex, i);
+                    SetCurentState(layer.LayerIndex, layer.StartState);
+                    i += 1;
+                }
+                // Avatar change in front of a mirror
+                foreach (var mirror in m_mirrorAnimators) { mirror.UpdateAvatar(); }
             };
             Scanner.OnPlayerAvatarSame += (ScannedData player) =>
             {
@@ -93,8 +94,6 @@ namespace AvatarAnimator
                     Logger.Dbg.Info("PlayerAvatarSame: Current Animator doesn't have data");
                     return;
                 }
-                // Set back the Player state before level change
-                foreach (var layer in m_Layers) { PlayState(layer.m_LayerIndex, layer.m_CurrentStateName, false); }
                 // Restore Values
                 foreach (var trans in m_player.Data.TransitionsData)
                 {
@@ -107,6 +106,8 @@ namespace AvatarAnimator
                         default: break;
                     }
                 }
+                // Set back the Player state before level change
+                foreach (var layer in m_Layers) { PlayState(layer.m_LayerIndex, layer.m_CurrentStateName, false); }
             };
 
             Scanner.OnNew += (ScannedData data) =>
