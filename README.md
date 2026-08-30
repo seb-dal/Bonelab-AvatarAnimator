@@ -6,3 +6,5 @@ https://github.com/seb-dal/Bonelab-AvatarAnimator/wiki
 
 # TODO
 - Test with Fusion
+- Correct Keyboard input inconsistency and input key sharing between inputs
+- Add Entry points variables to connect this mod to other mods
