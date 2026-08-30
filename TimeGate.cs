@@ -39,7 +39,7 @@
         {
             if (DateTime.Now > m_timer)
             {
-                m_timer.AddSeconds(m_interval);
+                m_timer = m_timer.AddSeconds(m_interval);
                 if (DateTime.Now > m_timer) Reset();
                 return true;
             }

@@ -7,14 +7,12 @@ using Newtonsoft.Json;
 using UnityEditor;
 #endif
 
-
 namespace AvatarAnimator
 {
     [Serializable]
     public class AvatarAnimatorDataContainer : MonoBehaviour
     {
         public Animator m_Animator;
-        public AnimatorType m_AnimatorType;
         public AvatarAnimatorData m_Data;
         public string m_CompactedData;
 
@@ -46,12 +44,6 @@ namespace AvatarAnimator
 
 namespace AvatarAnimator
 {
-    public enum AnimatorType
-    {
-        Player,
-        Npc,
-        Object
-    }
     public enum InputType
     {
         Unset,
@@ -76,6 +68,7 @@ namespace AvatarAnimator
         Health,
         Timer,
         WaitEndClip,
+        Cyclic,
     }
 
     public enum ControllerInputs
@@ -93,65 +86,68 @@ namespace AvatarAnimator
     [Serializable]
     public class StateNode
     {
-        public float m_ClipDuration;
-        public bool m_ClipIsLooping;
-        public float m_Speed;
-        public List<Transition> m_Transitions;
+        public float ClipDuration;
+        public bool ClipIsLooping;
+        public float Speed;
+        public List<Transition> Transitions;
     }
 
     [Serializable]
     public class Transition
     {
-        public string m_NextState;
-        public float m_Duration;
-        public List<TransitionCondition> m_Conditions;
+        public string NextState;
+        public float Duration;
+        public float ExitTime;
+        public bool HasExitTime;
+        public List<TransitionCondition> Conditions;
     }
 
     [Serializable]
     public class TransitionCondition
     {
-        public string m_Name;
-        public ConditionType m_Type;
-        public ConditionMode m_Mode;
-        public float m_Threshold;
+        public string Name;
+        public ConditionType Type;
+        public ConditionMode Mode;
+        public float Threshold;
     }
 
     [Serializable]
     public class TransitionConditionData
     {
-        public int m_RandomMin;
-        public int m_RandomMax;
-        public List<ConditionInput> m_Inputs;
+        public ConditionType Type;
+        public int Min;
+        public int Max;
+        public List<ConditionInput> Inputs;
     }
 
     [Serializable]
     public class ConditionInput
     {
-        public InputType m_Type;
-        public string m_InputName;
-        public KeyCode m_KeyCode;
-        public ControllerInputs m_ControllerInput;
-        public string m_InputName2;
-        public KeyCode m_KeyCode2;
-        public ControllerInputs m_ControllerInput2;
+        public InputType Type;
+        public string InputName;
+        public KeyCode KeyCode;
+        public ControllerInputs ControllerInput;
+        public string InputName2;
+        public KeyCode KeyCode2;
+        public ControllerInputs ControllerInput2;
     }
 
     [Serializable]
     public class LayerData
     {
-        public string m_Name;
-        public Dictionary<string, StateNode> m_States;
-        public int m_layerIndex;
-        public string m_StartState;
+        public string Name;
+        public Dictionary<string, StateNode> States;
+        public int LayerIndex;
+        public string StartState;
     }
 
     [Serializable]
     public class AvatarAnimatorData
     {
-        public List<LayerData> m_ListLayer;
-        public Dictionary<string, TransitionConditionData> m_TransitionsData;
-        public string m_Version;
-        public string m_Date;
+        public List<LayerData> ListLayer;
+        public Dictionary<string, TransitionConditionData> TransitionsData;
+        public string Version;
+        public string Date;
     }
 }
 

@@ -80,7 +80,7 @@ namespace AvatarAnimator
         }
     }
 
-
+    /// <summary> Scan GameObjects for Mirrors </summary>
     public static class Scanner
     {
         private static ScannedData PlayerData = null;
