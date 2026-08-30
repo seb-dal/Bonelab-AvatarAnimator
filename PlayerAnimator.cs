@@ -17,7 +17,8 @@ namespace AvatarAnimator
             public StateNode m_CurrentState = null;
             public string m_CurrentStateName;
             public DateTime? m_Transition = null;
-            public DateTime? m_ConditionDelay = null;
+            public DateTime? m_ConditionDelayTimer = null;
+            public DateTime? m_ConditionDelayWaitEndClip = null;
 
             public LayerAnimator(int layerIndex) { m_LayerIndex = layerIndex; }
         }
@@ -182,7 +183,8 @@ namespace AvatarAnimator
                     if (DateTime.Now > layer.m_Transition)
                     {
                         layer.m_Transition = null;
-                        layer.m_ConditionDelay = null;
+                        layer.m_ConditionDelayTimer = null;
+                        layer.m_ConditionDelayWaitEndClip = null;
                     }
                     return;
                 }
@@ -237,8 +239,8 @@ namespace AvatarAnimator
                     }
                 case ConditionType.Timer:
                     {
-                        if (null == layer.m_ConditionDelay) layer.m_ConditionDelay = DateTime.Now;
-                        if (DateTime.Now > layer.m_ConditionDelay?.AddSeconds(cond.Threshold))
+                        if (null == layer.m_ConditionDelayTimer) layer.m_ConditionDelayTimer = DateTime.Now.AddSeconds(cond.Threshold);
+                        if (DateTime.Now > layer.m_ConditionDelayTimer)
                         {
                             m_player.Animator.SetTrigger(cond.Name);
                             return true;
@@ -247,8 +249,8 @@ namespace AvatarAnimator
                     }
                 case ConditionType.WaitEndClip:
                     {
-                        if (null == layer.m_ConditionDelay) layer.m_ConditionDelay = DateTime.Now;
-                        if (DateTime.Now > layer.m_ConditionDelay?.AddSeconds(layer.m_CurrentState.ClipDuration / Math.Abs(layer.m_CurrentState.Speed)))
+                        if (null == layer.m_ConditionDelayWaitEndClip) layer.m_ConditionDelayWaitEndClip = DateTime.Now.AddSeconds(layer.m_CurrentState.ClipDuration / Math.Abs(layer.m_CurrentState.Speed));
+                        if (DateTime.Now > layer.m_ConditionDelayWaitEndClip)
                         {
                             m_player.Animator.SetTrigger(cond.Name);
                             return true;
