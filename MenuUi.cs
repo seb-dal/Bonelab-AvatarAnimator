@@ -32,11 +32,11 @@ namespace AvatarAnimator
                 return;
             }
             Logger.Dbg?.Info($"MenuUi: Avatar Animator data found");
-            foreach (var lay in player.Data.m_ListLayer)
+            foreach (var lay in player.Data.ListLayer)
             {
-                foreach (var state in lay.m_States)
+                foreach (var state in lay.States)
                 {
-                    ListAction.Add(m_AvatarStatePage.CreateFunction($"{lay.m_layerIndex} {state.Key}", Color.gray, () => PlayerAnimator.PlayState(lay.m_layerIndex, state.Key)));
+                    ListAction.Add(m_AvatarStatePage.CreateFunction($"{lay.LayerIndex} {state.Key}", Color.gray, () => PlayerAnimator.PlayState(lay.LayerIndex, state.Key)));
                 }
             }
         }

@@ -28,7 +28,7 @@ namespace AvatarAnimator
             if (!PrefabUtility.IsPartOfPrefabAsset(container.gameObject))
             {
                 anim = (Animator)EditorGUILayout.ObjectField(anim, typeof(Animator), true);
-                GUILayout.Label("" == container.m_Data.m_Version ? $"No data found" : $"Data found, version:'{container.m_Data.m_Version}' generated:'{container.m_Data.m_Date}'");
+                GUILayout.Label("" == container.m_Data.Version ? $"No data found" : $"Data found, version:'{container.m_Data.Version}' generated:'{container.m_Data.Date}'");
                 GUI.enabled = null != anim;
                 GUILayout.BeginHorizontal();
                 if (GUILayout.Button("How To Use"))
@@ -75,13 +75,24 @@ namespace AvatarAnimator
             Logger.Msg("In the Animator controller of your avatar, add a Layer named 'AvatarAnimator' and in the layer settings push the weigth to 1 to make it visible.");
             Logger.Msg("Add your clips and add the transition between them");
             Logger.Msg("In the Parameters tabs, you can add different types of parameter that are handle by the mod.");
-            Logger.Msg(" - As Tigger: 'Input='");
+            Logger.Msg("");
+            Logger.Msg(" - As Tigger: <b>Input=...</b>");
+            Logger.Msg("Put this to animate using your inputs");
             LogInputHelp();
-            Logger.Msg(" - As Int: 'Random(<max>)' or 'Random(<min,<max>>)' ");
-            Logger.Msg(" - As Float: Health");
-            Logger.Msg(" - As Float: Timer");
+            Logger.Msg("");
+            Logger.Msg(" - As Int: <b>Random(max)</b> or <b>Random(min,max)<b> ");
+            Logger.Msg("Put this to select a random transition among multiple");
+            Logger.Msg("");
+            Logger.Msg(" - As Float: <b>Health</b>");
+            Logger.Msg("Put this to Animate using the health of your avatar");
+            Logger.Msg("");
+            Logger.Msg(" - As Float: <b>Timer</b>");
+            Logger.Msg("Put this to play an animation after some time");
+            Logger.Msg("");
+            Logger.Msg(" - As Int: <b>Cyclic(max)</b>");
+            Logger.Msg("Put this to select a transition cyclicly among multiple");
+            Logger.Msg("");
             Logger.Msg("Once done, add in the transition the condition to change to the next state.");
-
             Logger.MsgInfo("Step 2:");
             Logger.Msg("When you're finish with the Animator Controller, go back to the Component and push the button 'Populate Data'");
             Logger.Msg("Look in this console if there are any error(s) or warning(s) and correct them.");
@@ -95,11 +106,12 @@ namespace AvatarAnimator
         private static readonly string TransitionInputsSeparator = ";";
         private static readonly string InputTypeSeparator = ":";
         private static readonly string SecondaryInputSeparator = "+";
-        private static readonly Regex isRandomType = new(@"Random\((?:(\d+)|(\d+),(\d+))\)", RegexOptions.IgnoreCase);
+        private static readonly Regex isRandomType = new(@"Random\((?:(\d+)|(\d+),[ ]*(\d+))\)", RegexOptions.IgnoreCase);
         private static readonly string isHealth = "Health";
         private static readonly string isInput = "Input=";
         private static readonly string isTimer = "Timer";
         private static readonly string isWaitEndClip = "WaitEndClip";
+        private static readonly Regex isCyclic = new(@"Cyclic\((\d+)\)", RegexOptions.IgnoreCase);
 
         private static readonly string version = "1.0";
 
@@ -107,10 +119,10 @@ namespace AvatarAnimator
         {
             AvatarAnimatorData data = new()
             {
-                m_Version = version,
-                m_Date = DateTime.Now.ToString(),
-                m_TransitionsData = new(),
-                m_ListLayer = new(),
+                Version = version,
+                Date = DateTime.Now.ToString(),
+                TransitionsData = new(),
+                ListLayer = new(),
             };
             int layerIndex = -1;
             if (anim.runtimeAnimatorController is AnimatorController ac)
@@ -123,12 +135,12 @@ namespace AvatarAnimator
                     AnimatorStateMachine stateMachine = layer.stateMachine;
                     LayerData layerData = new()
                     {
-                        m_Name = LayerName,
-                        m_StartState = stateMachine.defaultState.name,
-                        m_layerIndex = layerIndex,
-                        m_States = new(),
+                        Name = LayerName,
+                        StartState = stateMachine.defaultState.name,
+                        LayerIndex = layerIndex,
+                        States = new(),
                     };
-                    data.m_ListLayer.Add(layerData);
+                    data.ListLayer.Add(layerData);
 
                     foreach (ChildAnimatorState childState in stateMachine.states)
                     {
@@ -136,39 +148,41 @@ namespace AvatarAnimator
                         var motion = childState.state.motion;
                         StateNode state = new()
                         {
-                            m_ClipDuration = motion?.averageDuration ?? 0,
-                            m_ClipIsLooping = motion?.isLooping ?? false,
-                            m_Speed = childState.state.speed,
-                            m_Transitions = new(),
+                            ClipDuration = motion?.averageDuration ?? 0,
+                            ClipIsLooping = motion?.isLooping ?? false,
+                            Speed = childState.state.speed,
+                            Transitions = new(),
                         };
-                        layerData.m_States.Add(childState.state.name, state);
+                        layerData.States.Add(childState.state.name, state);
 
                         foreach (AnimatorStateTransition transition in childState.state.transitions)
                         {
                             Logger.Msg($"    Transition: '{transition.name}' {childState.state.name} -> {transition.destinationState.name}");
                             Transition trans = new()
                             {
-                                m_NextState = transition.destinationState.name,
-                                m_Duration = transition.duration,
-                                m_Conditions = new(),
+                                NextState = transition.destinationState.name,
+                                Duration = transition.duration,
+                                ExitTime = transition.exitTime,
+                                HasExitTime = transition.hasExitTime,
+                                Conditions = new(),
                             };
-                            state.m_Transitions.Add(trans);
+                            state.Transitions.Add(trans);
                             foreach (AnimatorCondition cond in transition.conditions)
                             {
                                 Logger.Msg($"      Condition: {cond.parameter}");
                                 var res = ToTransitionCondition(cond);
                                 if (null == res) continue;
-                                trans.m_Conditions.Add(res.First);
+                                trans.Conditions.Add(res.First);
                                 if (null != res.Second)
                                 {
-                                    if (!data.m_TransitionsData.ContainsKey(cond.parameter))
-                                        data.m_TransitionsData.Add(cond.parameter, res.Second);
+                                    if (!data.TransitionsData.ContainsKey(cond.parameter))
+                                        data.TransitionsData.Add(cond.parameter, res.Second);
                                 }
                             }
                         }
                     }
                 }
-                if (0 == data.m_ListLayer.Count)
+                if (0 == data.ListLayer.Count)
                 {
                     Logger.MsgErr($"Animator must have a Layer name '{LayerName}' with states");
                 }
@@ -195,27 +209,27 @@ namespace AvatarAnimator
                     name = inputs[0];
                     name2 = inputs[1];
                 }
-                tInput.m_Type = type;
-                tInput.m_InputName = name;
-                tInput.m_InputName2 = name2;
+                tInput.Type = type;
+                tInput.InputName = name;
+                tInput.InputName2 = name2;
                 switch (type)
                 {
                     case InputType.Controller:
                         {
-                            tInput.m_ControllerInput = ParseControllerInputs(input, name);
-                            tInput.m_ControllerInput2 = ParseControllerInputs(input, name2, true);
-                            valide &= tInput.m_InputName != tInput.m_InputName2;
-                            valide &= ControllerInputs.None != tInput.m_ControllerInput;
-                            valide &= (ControllerInputs.None != tInput.m_ControllerInput2 || "" == name2);
+                            tInput.ControllerInput = ParseControllerInputs(input, name);
+                            tInput.ControllerInput2 = ParseControllerInputs(input, name2, true);
+                            valide &= tInput.InputName != tInput.InputName2;
+                            valide &= ControllerInputs.None != tInput.ControllerInput;
+                            valide &= (ControllerInputs.None != tInput.ControllerInput2 || "" == name2);
                         }
                         break;
                     case InputType.Keyboard:
                         {
-                            tInput.m_KeyCode = ParseKeyCode(input, name);
-                            tInput.m_KeyCode2 = ParseKeyCode(input, name2, true);
-                            valide &= tInput.m_KeyCode != tInput.m_KeyCode2;
-                            valide &= KeyCode.None != tInput.m_KeyCode;
-                            valide &= (KeyCode.None != tInput.m_KeyCode2 || "" == name2);
+                            tInput.KeyCode = ParseKeyCode(input, name);
+                            tInput.KeyCode2 = ParseKeyCode(input, name2, true);
+                            valide &= tInput.KeyCode != tInput.KeyCode2;
+                            valide &= KeyCode.None != tInput.KeyCode;
+                            valide &= (KeyCode.None != tInput.KeyCode2 || "" == name2);
                         }
                         break;
                     default:
@@ -238,8 +252,8 @@ namespace AvatarAnimator
 
             if (!valide)
             {
-                Logger.MsgErr($"'{input}' is not valid (name:'{tInput.m_InputName}' code:{tInput.m_KeyCode} name2:'{tInput.m_InputName2}' code2:{tInput.m_KeyCode2})");
-                tInput.m_Type = InputType.Unset;
+                Logger.MsgErr($"'{input}' is not valid (name:'{tInput.InputName}' code:{tInput.KeyCode} name2:'{tInput.InputName2}' code2:{tInput.KeyCode2})");
+                tInput.Type = InputType.Unset;
             }
             return tInput;
         }
@@ -270,71 +284,89 @@ namespace AvatarAnimator
         {
             TransitionCondition c = new()
             {
-                m_Name = cond.parameter,
-                m_Type = ConditionType.Unset,
+                Name = cond.parameter,
+                Type = ConditionType.Unset,
             };
             TransitionConditionData d = null;
 
-            var rand = isRandomType.Match(cond.parameter);
-            if (rand.Success)
+            if (isRandomType.Match(cond.parameter) is { Success: true } rand)
             {
-                c.m_Type = ConditionType.Random;
-                c.m_Mode = Utils.ToConditionMode(cond.mode);
-                c.m_Threshold = cond.threshold;
-                d = new();
+                c.Type = ConditionType.Random;
+                c.Mode = Utils.ToConditionMode(cond.mode);
+                c.Threshold = cond.threshold;
+                d = new()
+                {
+                    Type = c.Type,
+                };
                 if (null != rand.Groups[1])
                 {
-                    d.m_RandomMax = int.Parse(rand.Groups[1].Value);
+                    d.Max = int.Parse(rand.Groups[1].Value);
                 }
                 else
                 {
-                    d.m_RandomMin = int.Parse(rand.Groups[2].Value);
-                    d.m_RandomMax = int.Parse(rand.Groups[3].Value);
+                    d.Min = int.Parse(rand.Groups[2].Value);
+                    d.Max = int.Parse(rand.Groups[3].Value);
                 }
-                if ((d.m_RandomMin) < cond.threshold || cond.threshold < d.m_RandomMax)
+                if ((d.Min) < cond.threshold || cond.threshold < d.Max)
                     Logger.MsgErr($"Random value must be between defined values");
-                if ((d.m_RandomMin) > d.m_RandomMax)
+                if ((d.Min) > d.Max)
                     Logger.MsgErr($"Random max must be greater that min");
             }
             else if (cond.parameter.Equals(isHealth, StringComparison.CurrentCultureIgnoreCase))
             {
-                c.m_Type = ConditionType.Health;
-                c.m_Mode = Utils.ToConditionMode(cond.mode);
-                c.m_Threshold = cond.threshold;
-                if (c.m_Mode != ConditionMode.Greater && c.m_Mode != ConditionMode.Less)
+                c.Type = ConditionType.Health;
+                c.Mode = Utils.ToConditionMode(cond.mode);
+                c.Threshold = cond.threshold;
+                if (c.Mode != ConditionMode.Greater && c.Mode != ConditionMode.Less)
                     Logger.MsgErr($"Health must be a float and use Greater or Less");
                 if (0.0f < cond.threshold || cond.threshold < 1.0f)
                     Logger.MsgErr($"Health value must be between 0 and 1");
             }
             else if (cond.parameter.StartsWith(isInput, StringComparison.CurrentCultureIgnoreCase))
             {
-                c.m_Type = ConditionType.Input;
+                c.Type = ConditionType.Input;
                 var inputs = cond.parameter.Substring(isInput.Length);
                 d = new()
                 {
-                    m_Inputs = new(),
+                    Inputs = new(),
+                    Type = c.Type,
                 };
                 foreach (string input in inputs.Split(TransitionInputsSeparator))
                 {
                     var tInput = ToTransitionInput(input);
-                    if (InputType.Unset == tInput.m_Type) continue;
-                    d.m_Inputs.Add(tInput);
+                    if (InputType.Unset == tInput.Type) continue;
+                    d.Inputs.Add(tInput);
                 }
             }
             else if (cond.parameter.StartsWith(isTimer, StringComparison.CurrentCultureIgnoreCase))
             {
-                c.m_Type = ConditionType.Timer;
-                c.m_Mode = Utils.ToConditionMode(cond.mode);
-                c.m_Threshold = cond.threshold;
-                if (c.m_Mode != ConditionMode.Greater)
+                c.Type = ConditionType.Timer;
+                c.Mode = Utils.ToConditionMode(cond.mode);
+                c.Threshold = cond.threshold;
+                if (c.Mode != ConditionMode.Greater)
                     Logger.MsgErr($"Timer must only use Greater to work");
             }
             else if (cond.parameter.StartsWith(isWaitEndClip, StringComparison.CurrentCultureIgnoreCase))
             {
-                c.m_Type = ConditionType.WaitEndClip;
+                c.Type = ConditionType.WaitEndClip;
+            }
+            else if (isCyclic.Match(cond.parameter) is { Success: true } cycle)
+            {
+                c.Type = ConditionType.Cyclic;
+                c.Mode = Utils.ToConditionMode(cond.mode);
+                c.Threshold = cond.threshold;
+                d = new()
+                {
+                    Type = c.Type,
+                };
+                d.Max = int.Parse(cycle.Groups[1].Value);
+                if (0 > d.Max)
+                    Logger.MsgErr($"Cyclic value must greater that 0");
+                if (c.Mode != ConditionMode.Equals)
+                    Logger.MsgWarn($"Cyclic should only use Equals");
             }
 
-            if (ConditionType.Unset == c.m_Type)
+            if (ConditionType.Unset == c.Type)
             {
                 Logger.MsgErr($"Unknown condition {cond.parameter}");
                 Logger.MsgInfo($"'Random(5)', 'Random(0,5)', '{isHealth}', '{isInput}...', '{isTimer}'");
@@ -345,12 +377,13 @@ namespace AvatarAnimator
 
         private void LogInputHelp()
         {
-            Logger.Msg("Exemple: 'Input=<Type>:<Key1>(+<Key2>);<Type>:<Key>'");
+            Logger.Msg("Input=<Type>:<Key1>(+<Key2>);<Type>:<Key>");
             Logger.Msg($"<Type>: '{InputType.Keyboard}', '{InputType.Controller}'");
             Logger.Msg("<Key>:"
-                + $"\n - '{InputType.Keyboard}': [{Enum.GetValues(typeof(KeyCode))}]"
-                + $"\n - '{InputType.Controller}': [{Enum.GetValues(typeof(ControllerInputs))}]"
+                + $"\n - '{InputType.Keyboard}': {Enum.GetValues(typeof(KeyCode))}"
+                + $"\n - '{InputType.Controller}': {Enum.GetValues(typeof(ControllerInputs))}"
                 );
+            Logger.Msg("Exemple: Input=Keyboard.T;Controller.LeftThumbStick");
         }
     }
 }
@@ -360,21 +393,14 @@ namespace AvatarAnimator
 {
     public class GuiLogger
     {
-        private enum LogType
-        {
-            Msg,
-            Info,
-            Warning,
-            Error
-        }
-        private readonly List<Pair<LogType, string>> logs = new();
+        private readonly List<string> logs = new();
 
         public void Reset() => logs.Clear();
 
-        public void Msg(string msg) => logs.Add(new(LogType.Msg, msg));
-        public void MsgInfo(string msg) => logs.Add(new(LogType.Info, msg));
-        public void MsgWarn(string msg) => logs.Add(new(LogType.Warning, msg));
-        public void MsgErr(string msg) => logs.Add(new(LogType.Error, msg));
+        public void Msg(string msg) => logs.Add(msg);
+        public void MsgInfo(string msg) => logs.Add("<color=cyan>" + msg + "</color>");
+        public void MsgWarn(string msg) => logs.Add("<color=yellow>" + msg + "</color>");
+        public void MsgErr(string msg) => logs.Add("<color=red>" + msg + "</color>");
 
         private Vector2 gui_scrollPosition;
         private float gui_scrollViewHeight = 160f;
@@ -383,18 +409,12 @@ namespace AvatarAnimator
         public void Gui()
         {
             gui_scrollPosition = EditorGUILayout.BeginScrollView(gui_scrollPosition, GUILayout.ExpandWidth(true), GUILayout.Height(gui_scrollViewHeight));
+            GUIStyle style = new();
+            style.richText = true;
+            style.normal.textColor = Color.white;
             foreach (var log in logs)
             {
-                GUI.color = log.First switch
-                {
-                    LogType.Info => Color.cyan,
-                    LogType.Warning => GUI.color = Color.yellow,
-                    LogType.Error => GUI.color = Color.red,
-                    _ => Color.white
-                };
-                GUILayout.Label(log.Second);
-
-                GUI.color = Color.white;
+                GUILayout.Label(log, style);
             }
             EditorGUILayout.EndScrollView();
 

@@ -8,18 +8,18 @@ namespace AvatarAnimator
     {
         public static bool IsTriggered(ConditionInput trans)
         {
-            if (InputType.Unset == trans.m_Type) return false;
-            switch (trans.m_Type)
+            if (InputType.Unset == trans.Type) return false;
+            switch (trans.Type)
             {
                 case InputType.Keyboard:
-                    if (KeyCode.None == trans.m_KeyCode2)
-                        return Input.GetKeyDown(trans.m_KeyCode);
-                    return Input.GetKeyDown(trans.m_KeyCode) && Input.GetKey(trans.m_KeyCode2);
+                    if (KeyCode.None == trans.KeyCode2)
+                        return Input.GetKeyDown(trans.KeyCode);
+                    return Input.GetKeyDown(trans.KeyCode) && Input.GetKey(trans.KeyCode2);
                 case InputType.Controller:
-                    if (ControllerInputs.None == trans.m_ControllerInput2)
-                        return ControlerTriggerDown(trans.m_ControllerInput);
-                    return ControlerTriggerDown(trans.m_ControllerInput)
-                        && ControlerTriggerDown(trans.m_ControllerInput2, false);
+                    if (ControllerInputs.None == trans.ControllerInput2)
+                        return ControlerTriggerDown(trans.ControllerInput);
+                    return ControlerTriggerDown(trans.ControllerInput)
+                        && ControlerTriggerDown(trans.ControllerInput2, false);
             }
             return false;
         }

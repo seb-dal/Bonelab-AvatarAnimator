@@ -3,6 +3,12 @@ using Newtonsoft.Json;
 
 namespace AvatarAnimator
 {
+    public class PlayerStateChange
+    {
+        public int m_Layer;
+        public string m_State;
+        public PlayerStateChange(int layer, string state) { m_Layer = layer; m_State = state; }
+    }
     public static class PlayerAnimator
     {
         public class LayerAnimator
@@ -11,8 +17,8 @@ namespace AvatarAnimator
             public StateNode m_CurrentState = null;
             public string m_CurrentStateName;
             public DateTime? m_Transition = null;
-            public DateTime? m_ConditionDelay = null;
-            public int? m_RandomValue = null;
+            public DateTime? m_ConditionDelayTimer = null;
+            public DateTime? m_ConditionDelayWaitEndClip = null;
 
             public LayerAnimator(int layerIndex) { m_LayerIndex = layerIndex; }
         }
@@ -23,6 +29,12 @@ namespace AvatarAnimator
         private static readonly Dictionary<int, int> m_LayerIndexToIndex = new();
         private static readonly List<LayerAnimator> m_Layers = new();
         private static ScannedData m_player = null;
+
+        private static long m_frame = 0;
+        /// <summary> For sharing input across multiple transitions </summary>
+        private static readonly Dictionary<string, long> m_inputPressed = new();
+        /// <summary> Store values for level change </summary>
+        private static readonly Dictionary<string, int> m_StoreValues = new();
 
         public static bool HasAvatarAnimatorData { get => null != m_player?.Container; }
         public static byte Id { get => m_player.Id; }
@@ -35,20 +47,40 @@ namespace AvatarAnimator
             };
             Scanner.OnPlayerAvatarChange += (ScannedData player) =>
             {
+                m_frame = 0;
+                m_inputPressed.Clear();
+                m_StoreValues.Clear();
                 m_Layers.Clear();
                 m_LayerIndexToIndex.Clear();
+
                 m_player = player;
                 if (!m_player.HasAvatarAnimatorData)
                 {
                     Logger.Dbg.Info("PlayerAvatarChange: Current Animator doesn't have data");
                     return;
                 }
-                int i = 0;
-                foreach (var layer in m_player.Data.m_ListLayer)
+                // Initialise Values
+                foreach (var trans in m_player.Data.TransitionsData)
                 {
-                    m_Layers.Add(new(layer.m_layerIndex));
-                    m_LayerIndexToIndex.Add(layer.m_layerIndex, i);
-                    SetCurentState(layer.m_layerIndex, layer.m_StartState);
+                    switch (trans.Value.Type)
+                    {
+                        case ConditionType.Input:
+                            m_inputPressed.Add(trans.Key, -1);
+                            break;
+                        case ConditionType.Random:
+                        case ConditionType.Cyclic:
+                            m_StoreValues.Add(trans.Key, -1);
+                            break;
+                        default: break;
+                    }
+                }
+                // Initialise and get layers/states values 
+                int i = 0;
+                foreach (var layer in m_player.Data.ListLayer)
+                {
+                    m_Layers.Add(new(layer.LayerIndex));
+                    m_LayerIndexToIndex.Add(layer.LayerIndex, i);
+                    SetCurentState(layer.LayerIndex, layer.StartState);
                     i += 1;
                 }
                 // Avatar change in front of a mirror
@@ -62,8 +94,20 @@ namespace AvatarAnimator
                     Logger.Dbg.Info("PlayerAvatarSame: Current Animator doesn't have data");
                     return;
                 }
+                // Restore Values
+                foreach (var trans in m_player.Data.TransitionsData)
+                {
+                    switch (trans.Value.Type)
+                    {
+                        case ConditionType.Random:
+                        case ConditionType.Cyclic:
+                            m_player.Animator.SetInteger(trans.Key, m_StoreValues[trans.Key]);
+                            break;
+                        default: break;
+                    }
+                }
                 // Set back the Player state before level change
-                foreach (var layer in m_Layers) { PlayState(layer.m_LayerIndex, layer.m_CurrentStateName); }
+                foreach (var layer in m_Layers) { PlayState(layer.m_LayerIndex, layer.m_CurrentStateName, false); }
             };
 
             Scanner.OnNew += (ScannedData data) =>
@@ -83,27 +127,56 @@ namespace AvatarAnimator
             };
         }
 
-        public static void SetCurentState(int layer, string state)
+        public static void SetCurentState(int layer, string state, bool updateValues = true)
         {
             if (!m_LayerIndexToIndex.ContainsKey(layer)) return;
             int indexLayer = m_LayerIndexToIndex[layer];
             m_Layers[indexLayer].m_CurrentStateName = state;
-            m_Layers[indexLayer].m_CurrentState = m_player.Data.m_ListLayer[indexLayer].m_States[state];
+            m_Layers[indexLayer].m_CurrentState = m_player.Data.ListLayer[indexLayer].States[state];
             foreach (var anim in m_mirrorAnimators) anim.Animator.Play(state, layer);
             Logger.Msg($"Player: {m_player.Barcode.ToString()} Current state change to {state}");
             Logger.Dbg?.Data(JsonConvert.SerializeObject(m_Layers[indexLayer].m_CurrentState, Formatting.None));
             OnAvatarStateChanged?.Invoke(new(layer, state));
+
+            if (!updateValues) return;
+            // Only update values if there will be used
+            foreach (var trans in m_Layers[indexLayer].m_CurrentState.Transitions)
+            {
+                foreach (var cond in trans.Conditions)
+                {
+                    switch (cond.Type)
+                    {
+                        case ConditionType.Random:
+                            {
+                                TransitionConditionData data = m_player.Data.TransitionsData[cond.Name];
+                                var value = Utils.RandomInt(data.Min, data.Max);
+                                m_StoreValues[cond.Name] = value;
+                                m_player.Animator.SetInteger(cond.Name, value);
+                            }
+                            break;
+                        case ConditionType.Cyclic:
+                            {
+                                TransitionConditionData data = m_player.Data.TransitionsData[cond.Name];
+                                var value = (m_player.Animator.GetInteger(cond.Name) + 1) % data.Max;
+                                m_StoreValues[cond.Name] = value;
+                                m_player.Animator.SetInteger(cond.Name, value);
+                            }
+                            break;
+                    }
+                }
+            }
         }
 
-        public static void PlayState(int layer, string state)
+        public static void PlayState(int layer, string state, bool updateValues = true)
         {
             m_player.Animator.Play(state, layer);
-            SetCurentState(layer, state);
+            SetCurentState(layer, state, updateValues);
         }
 
         public static void Update()
         {
             if (!HasAvatarAnimatorData) return;
+            m_frame += 1;
             foreach (var layer in m_Layers)
             {
                 if (null != layer.m_Transition)
@@ -111,42 +184,44 @@ namespace AvatarAnimator
                     if (DateTime.Now > layer.m_Transition)
                     {
                         layer.m_Transition = null;
-                        layer.m_ConditionDelay = null;
-                        layer.m_RandomValue = null;
+                        layer.m_ConditionDelayTimer = null;
+                        layer.m_ConditionDelayWaitEndClip = null;
                     }
                     return;
                 }
-                foreach (var trans in layer.m_CurrentState.m_Transitions)
+                foreach (var trans in layer.m_CurrentState.Transitions)
                 {
                     bool validate = true;
-                    foreach (var cond in trans.m_Conditions)
+                    foreach (var cond in trans.Conditions)
                     {
                         validate = IsConditionValid(layer, cond);
                         if (!validate) break;
                     }
-                    if (validate)
+                    if (validate || trans.HasExitTime)
                     {
-                        layer.m_Transition = Utils.DateTimeNowPlusSecs(trans.m_Duration);
-                        SetCurentState(layer.m_LayerIndex, trans.m_NextState);
+                        layer.m_Transition = Utils.DateTimeNowPlusSecs(trans.HasExitTime ? trans.ExitTime : trans.Duration);
+                        SetCurentState(layer.m_LayerIndex, trans.NextState);
                         break;
                     }
                 }
             }
         }
 
-        public static bool IsConditionValid(LayerAnimator layer, TransitionCondition cond)
+        private static bool IsConditionValid(LayerAnimator layer, TransitionCondition cond)
         {
             if (null == cond) return true;
-            switch (cond.m_Type)
+            switch (cond.Type)
             {
                 case ConditionType.Input:
                     {
-                        TransitionConditionData data = m_player.Data.m_TransitionsData[cond.m_Name];
-                        foreach (var input in data.m_Inputs)
+                        TransitionConditionData data = m_player.Data.TransitionsData[cond.Name];
+                        if (m_frame == m_inputPressed[cond.Name]) return true; // for shared input across multiple transition
+                        foreach (var input in data.Inputs)
                         {
                             if (PlayerInput.IsTriggered(input))
                             {
-                                m_player.Animator.SetTrigger(cond.m_Name);
+                                m_player.Animator.SetTrigger(cond.Name);
+                                m_inputPressed[cond.Name] = m_frame;
                                 return true;
                             }
                         }
@@ -156,49 +231,40 @@ namespace AvatarAnimator
                     {
                         var health = Player.RigManager.health;
                         float healthValue = health.curr_Health / health.max_Health;
-                        m_player.Animator.SetFloat(cond.m_Name, healthValue);
-                        return Utils.Is(cond.m_Mode, healthValue, cond.m_Threshold);
+                        m_player.Animator.SetFloat(cond.Name, healthValue);
+                        return Utils.Is(cond.Mode, healthValue, cond.Threshold);
                     }
                 case ConditionType.Random:
                     {
-                        if (null == layer.m_RandomValue)
-                        {
-                            TransitionConditionData data = m_player.Data.m_TransitionsData[cond.m_Name];
-                            layer.m_RandomValue = Utils.RandomInt(data.m_RandomMin, data.m_RandomMax);
-                            m_player.Animator.SetInteger(cond.m_Name, layer.m_RandomValue ?? 0);
-                        }
-                        return Utils.Is(cond.m_Mode, (float)layer.m_RandomValue, cond.m_Threshold);
+                        return Utils.Is(cond.Mode, m_player.Animator.GetInteger(cond.Name), (int)cond.Threshold);
                     }
                 case ConditionType.Timer:
                     {
-                        if (null == layer.m_ConditionDelay) layer.m_ConditionDelay = DateTime.Now;
-                        if (DateTime.Now > layer.m_ConditionDelay?.AddSeconds(cond.m_Threshold))
+                        if (null == layer.m_ConditionDelayTimer) layer.m_ConditionDelayTimer = DateTime.Now.AddSeconds(cond.Threshold);
+                        if (DateTime.Now > layer.m_ConditionDelayTimer)
                         {
-                            m_player.Animator.SetTrigger(cond.m_Name);
+                            m_player.Animator.SetTrigger(cond.Name);
                             return true;
                         }
                         return false;
                     }
                 case ConditionType.WaitEndClip:
                     {
-                        if (null == layer.m_ConditionDelay) layer.m_ConditionDelay = DateTime.Now;
-                        if (DateTime.Now > layer.m_ConditionDelay?.AddSeconds(layer.m_CurrentState.m_ClipDuration / Math.Abs(layer.m_CurrentState.m_Speed)))
+                        if (null == layer.m_ConditionDelayWaitEndClip) layer.m_ConditionDelayWaitEndClip = DateTime.Now.AddSeconds(layer.m_CurrentState.ClipDuration / Math.Abs(layer.m_CurrentState.Speed));
+                        if (DateTime.Now > layer.m_ConditionDelayWaitEndClip)
                         {
-                            m_player.Animator.SetTrigger(cond.m_Name);
+                            m_player.Animator.SetTrigger(cond.Name);
                             return true;
                         }
                         return false;
                     }
+                case ConditionType.Cyclic:
+                    {
+                        return Utils.Is(cond.Mode, m_player.Animator.GetInteger(cond.Name), (int)cond.Threshold);
+                    }
             }
             return true;
         }
-    }
-
-    public class PlayerStateChange
-    {
-        public int m_Layer;
-        public string m_State;
-        public PlayerStateChange(int layer, string state) { m_Layer = layer; m_State = state; }
     }
 }
 
