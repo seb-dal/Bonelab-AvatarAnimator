@@ -25,6 +25,7 @@ namespace AvatarAnimator
         public event Action<PlayerStateChange> OnAvatarStateChanged;
         public event Action<ScannedData> OnPlayerAvatarChange;
         public event Action<ScannedData> OnPlayerAvatarSame;
+        public void PlayState(int layerIndex, string state) => PlayerAnimator.PlayState(layerIndex, state);
 
         public override void OnInitializeMelon()
         {
