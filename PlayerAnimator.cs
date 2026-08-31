@@ -30,9 +30,7 @@ namespace AvatarAnimator
         private static readonly List<LayerAnimator> m_Layers = new();
         private static ScannedData m_player = null;
 
-        private static long m_frame = 0;
-        /// <summary> For sharing input across multiple transitions </summary>
-        private static readonly Dictionary<string, long> m_inputPressed = new();
+
         /// <summary> Store values for level change </summary>
         private static readonly Dictionary<string, int> m_StoreValues = new();
 
@@ -47,8 +45,7 @@ namespace AvatarAnimator
             };
             Scanner.OnPlayerAvatarChange += (ScannedData player) =>
             {
-                m_frame = 0;
-                m_inputPressed.Clear();
+                PlayerInput.Clear();
                 m_StoreValues.Clear();
                 m_Layers.Clear();
                 m_LayerIndexToIndex.Clear();
@@ -65,7 +62,7 @@ namespace AvatarAnimator
                     switch (trans.Value.Type)
                     {
                         case ConditionType.Input:
-                            foreach (var input in trans.Value.Inputs) m_inputPressed.Add(input.InputName, -1);
+                            PlayerInput.Initialise(trans.Value);
                             break;
                         case ConditionType.Random:
                         case ConditionType.Cyclic:
@@ -176,7 +173,7 @@ namespace AvatarAnimator
         public static void Update()
         {
             if (!HasAvatarAnimatorData) return;
-            m_frame += 1;
+            PlayerInput.Next();
             foreach (var layer in m_Layers)
             {
                 if (null != layer.m_Transition)
@@ -217,11 +214,9 @@ namespace AvatarAnimator
                         TransitionConditionData data = m_player.Data.TransitionsData[cond.Name];
                         foreach (var input in data.Inputs)
                         {
-                            if (m_frame == m_inputPressed[input.InputName]) return true; // for shared input across multiple transition
                             if (PlayerInput.IsTriggered(input))
                             {
                                 m_player.Animator.SetTrigger(cond.Name);
-                                m_inputPressed[input.InputName] = m_frame;
                                 return true;
                             }
                         }

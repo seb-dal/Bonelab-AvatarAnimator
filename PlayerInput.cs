@@ -67,20 +67,43 @@ namespace AvatarAnimator
 
     public class PlayerInput
     {
+        private static long m_frame = 0;
+        /// <summary> For sharing input across multiple transitions </summary>
+        private static readonly Dictionary<string, long> m_inputPressed = new();
+
+        public static void Clear()
+        {
+            m_frame = 0;
+            m_inputPressed.Clear();
+        }
+        public static void Initialise(TransitionConditionData data)
+        {
+            foreach (var input in data.Inputs) m_inputPressed.Add(input.InputName, -1);
+        }
+
+        public static void Next() { m_frame += 1; }
+
         public static bool IsTriggered(ConditionInput trans)
         {
             if (InputType.Unset == trans.Type) return false;
             switch (trans.Type)
             {
                 case InputType.Keyboard:
-                    if (KeyCode.None == trans.KeyCode2)
-                        return LocalInput.GetKeyDown(trans.KeyCode);
-                    return LocalInput.GetKeyDown(trans.KeyCode) && Input.GetKey(trans.KeyCode2);
+                    if (LocalInput.GetKeyDown(trans.KeyCode) || m_frame == m_inputPressed[trans.InputName])
+                    {
+                        m_inputPressed[trans.InputName] = m_frame;
+                        if (KeyCode.None == trans.KeyCode2) return true;
+                        return Input.GetKey(trans.KeyCode2);
+                    }
+                    return false;
                 case InputType.Controller:
-                    if (ControllerInputs.None == trans.ControllerInput2)
-                        return LocalInput.GetControllerTriggerDown(trans.ControllerInput);
-                    return LocalInput.GetControllerTriggerDown(trans.ControllerInput)
-                        && LocalInput.GetControllerTrigger(trans.ControllerInput2);
+                    if (LocalInput.GetControllerTriggerDown(trans.ControllerInput) || m_frame == m_inputPressed[trans.InputName])
+                    {
+                        m_inputPressed[trans.InputName] = m_frame;
+                        if (ControllerInputs.None == trans.ControllerInput2) return true;
+                        return LocalInput.GetControllerTrigger(trans.ControllerInput2);
+                    }
+                    return false;
             }
             return false;
         }
