@@ -22,6 +22,10 @@ namespace AvatarAnimator
 
         public static bool IsLevelLoading { get => !enabled; }
 
+        public event Action<PlayerStateChange> OnAvatarStateChanged;
+        public event Action<ScannedData> OnPlayerAvatarChange;
+        public event Action<ScannedData> OnPlayerAvatarSame;
+
         public override void OnInitializeMelon()
         {
             Config.Initialize();
@@ -51,11 +55,16 @@ namespace AvatarAnimator
                 updateScanner.Reset();
             };
             FusionLabLoader.Initialise();
+
+            PlayerAnimator.OnAvatarStateChanged += OnAvatarStateChanged;
+            Scanner.OnPlayerAvatarChange += OnPlayerAvatarChange;
+            Scanner.OnPlayerAvatarSame += OnPlayerAvatarSame;
         }
 
         public override void OnUpdate()
         {
             if (!enabled) return;
+            LocalInput.Update();
             if (updateAvatarChangeLater)
             {
                 updateAvatarChangeLater = false;

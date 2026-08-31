@@ -65,7 +65,7 @@ namespace AvatarAnimator
                     switch (trans.Value.Type)
                     {
                         case ConditionType.Input:
-                            m_inputPressed.Add(trans.Key, -1);
+                            foreach (var input in trans.Value.Inputs) m_inputPressed.Add(input.InputName, -1);
                             break;
                         case ConditionType.Random:
                         case ConditionType.Cyclic:
@@ -215,13 +215,13 @@ namespace AvatarAnimator
                 case ConditionType.Input:
                     {
                         TransitionConditionData data = m_player.Data.TransitionsData[cond.Name];
-                        if (m_frame == m_inputPressed[cond.Name]) return true; // for shared input across multiple transition
                         foreach (var input in data.Inputs)
                         {
+                            if (m_frame == m_inputPressed[input.InputName]) return true; // for shared input across multiple transition
                             if (PlayerInput.IsTriggered(input))
                             {
                                 m_player.Animator.SetTrigger(cond.Name);
-                                m_inputPressed[cond.Name] = m_frame;
+                                m_inputPressed[input.InputName] = m_frame;
                                 return true;
                             }
                         }

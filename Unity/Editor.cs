@@ -71,26 +71,31 @@ namespace AvatarAnimator
 
         public void Help()
         {
+            Logger.MsgInfo("https://github.com/seb-dal/Bonelab-AvatarAnimator/wiki/How-to-use-in-Unity");
+            Logger.Msg("");
             Logger.MsgInfo("Step 1:");
             Logger.Msg("In the Animator controller of your avatar, add a Layer named 'AvatarAnimator' and in the layer settings push the weigth to 1 to make it visible.");
             Logger.Msg("Add your clips and add the transition between them");
             Logger.Msg("In the Parameters tabs, you can add different types of parameter that are handle by the mod.");
             Logger.Msg("");
             Logger.Msg(" - As Tigger: <b>Input=...</b>");
-            Logger.Msg("Put this to animate using your inputs");
+            Logger.Msg("Put this to animate using your inputs.");
             LogInputHelp();
             Logger.Msg("");
-            Logger.Msg(" - As Int: <b>Random(max)</b> or <b>Random(min,max)<b> ");
-            Logger.Msg("Put this to select a random transition among multiple");
+            Logger.Msg(" - As Int: <b>Random(max)</b> or <b>Random(min,max)</b> ");
+            Logger.Msg("Put this to select a random transition among multiple. Change max to the number of transition from a state. And for each transition set it to Equals and a coresponding number between 0 and Max.");
             Logger.Msg("");
             Logger.Msg(" - As Float: <b>Health</b>");
-            Logger.Msg("Put this to Animate using the health of your avatar");
+            Logger.Msg("Put this to Animate using the health of your avatar. ");
             Logger.Msg("");
             Logger.Msg(" - As Float: <b>Timer</b>");
-            Logger.Msg("Put this to play an animation after some time");
+            Logger.Msg("Put this to play an animation after some time. And for each transition set it to Greater and the number of sec");
             Logger.Msg("");
             Logger.Msg(" - As Int: <b>Cyclic(max)</b>");
-            Logger.Msg("Put this to select a transition cyclicly among multiple");
+            Logger.Msg("Put this to select a transition cyclicly among multiple. Change Count the number of transition from a state. And for each transition set it to Equals and a coresponding number between 0 and Count.");
+            Logger.Msg("");
+            Logger.Msg(" - As Tigger: <b>WaitEndClip</b>");
+            Logger.Msg("Put this to wait for the clip to stop playing completly once before allowing the state change.");
             Logger.Msg("");
             Logger.Msg("Once done, add in the transition the condition to change to the next state.");
             Logger.MsgInfo("Step 2:");
@@ -414,7 +419,7 @@ namespace AvatarAnimator
             style.normal.textColor = Color.white;
             foreach (var log in logs)
             {
-                GUILayout.Label(log, style);
+                GUILayout.TextArea(log, style);
             }
             EditorGUILayout.EndScrollView();
 

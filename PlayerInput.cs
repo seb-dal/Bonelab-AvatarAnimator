@@ -4,6 +4,67 @@ using BoneLib;
 
 namespace AvatarAnimator
 {
+    /// <summary>
+    /// Inputs ___Down() and ___Up() cannot be use safely because it is shared across the game and mods and the first one to use it consume the value.
+    /// </summary>
+    public static class LocalInput
+    {
+        private static readonly HashSet<KeyCode> m_KeyboardInputs = new();
+        private static readonly HashSet<ControllerInputs> m_ControllerInputs = new();
+        public static void Update()
+        {
+            foreach (var code in m_KeyboardInputs)
+            {
+                if (!Input.GetKey(code)) m_KeyboardInputs.Remove(code);
+            }
+            foreach (var code in m_ControllerInputs)
+            {
+                if (!GetControllerTrigger(code)) m_ControllerInputs.Remove(code);
+            }
+        }
+        public static bool GetKeyDown(KeyCode code)
+        {
+            if (Input.GetKey(code) && !m_KeyboardInputs.Contains(code))
+            {
+                m_KeyboardInputs.Add(code);
+                return true;
+            }
+            return false;
+        }
+
+        public static bool GetControllerTriggerDown(ControllerInputs input)
+        {
+            if (GetControllerTrigger(input) && !m_ControllerInputs.Contains(input))
+            {
+                m_ControllerInputs.Add(input);
+                return true;
+            }
+            return false;
+        }
+
+        public static bool GetControllerTrigger(ControllerInputs input)
+        {
+            return input switch
+            {
+                ControllerInputs.A => Player.RightController.GetAButton(),
+                ControllerInputs.B => Player.RightController.GetBButton(),
+                ControllerInputs.X => Player.LeftController.GetAButton(),
+                ControllerInputs.Y => Player.LeftController.GetBButton(),
+                ControllerInputs.LeftGrip => Player.LeftController.GetGripForce() > 0.8,
+                ControllerInputs.RightGrip => Player.RightController.GetGripForce() > 0.8,
+                ControllerInputs.LeftTrigger => Player.LeftController.GetGrabbedState(),
+                ControllerInputs.RightTrigger => Player.RightController.GetGrabbedState(),
+                ControllerInputs.Menu => Player.LeftController.GetMenuButton(),
+                ControllerInputs.SecondaryMenu => Player.RightController.GetSecondaryMenuButtonDown(),
+                ControllerInputs.LeftThumbStick => Player.LeftController.GetThumbStick(),
+                ControllerInputs.RightThumbStick => Player.RightController.GetThumbStick(),
+                ControllerInputs.LeftTouchPad => Player.LeftController.GetTouchPad(),
+                ControllerInputs.RightTouchPad => Player.RightController.GetTouchPad(),
+                _ => throw new Exception($"Invalid Controller input name '{input}'")
+            };
+        }
+    }
+
     public class PlayerInput
     {
         public static bool IsTriggered(ConditionInput trans)
@@ -13,74 +74,14 @@ namespace AvatarAnimator
             {
                 case InputType.Keyboard:
                     if (KeyCode.None == trans.KeyCode2)
-                        return Input.GetKeyDown(trans.KeyCode);
-                    return Input.GetKeyDown(trans.KeyCode) && Input.GetKey(trans.KeyCode2);
+                        return LocalInput.GetKeyDown(trans.KeyCode);
+                    return LocalInput.GetKeyDown(trans.KeyCode) && Input.GetKey(trans.KeyCode2);
                 case InputType.Controller:
                     if (ControllerInputs.None == trans.ControllerInput2)
-                        return ControlerTriggerDown(trans.ControllerInput);
-                    return ControlerTriggerDown(trans.ControllerInput)
-                        && ControlerTriggerDown(trans.ControllerInput2, false);
+                        return LocalInput.GetControllerTriggerDown(trans.ControllerInput);
+                    return LocalInput.GetControllerTriggerDown(trans.ControllerInput)
+                        && LocalInput.GetControllerTrigger(trans.ControllerInput2);
             }
-            return false;
-        }
-
-        public static bool ControlerTriggerDown(ControllerInputs input, bool down = true)
-        {
-            switch (input)
-            {
-                case ControllerInputs.A:
-                    if (down) return Player.RightController.GetAButtonDown();
-                    return Player.RightController.GetAButton();
-
-                case ControllerInputs.B:
-                    if (down) return Player.RightController.GetBButtonDown();
-                    return Player.RightController.GetBButton();
-
-                case ControllerInputs.X:
-                    if (down) return Player.LeftController.GetAButtonDown();
-                    return Player.LeftController.GetAButton();
-
-                case ControllerInputs.Y:
-                    if (down) return Player.LeftController.GetBButtonDown();
-                    return Player.LeftController.GetBButton();
-
-                case ControllerInputs.LeftGrip:
-                    return Player.LeftController.GetGripForce() > 0.8;
-
-                case ControllerInputs.RightGrip:
-                    return Player.RightController.GetGripForce() > 0.8;
-
-                case ControllerInputs.LeftTrigger:
-                    return Player.LeftController.GetGrabbedState();
-
-                case ControllerInputs.RightTrigger:
-                    return Player.RightController.GetGrabbedState();
-
-                case ControllerInputs.Menu:
-                    if (down) return Player.LeftController.GetMenuButtonDown();
-                    return Player.LeftController.GetMenuButton();
-
-                case ControllerInputs.SecondaryMenu:
-                    if (down) return Player.RightController.GetSecondaryMenuButtonDown();
-                    return Player.RightController.GetSecondaryMenuButtonDown();
-
-                case ControllerInputs.LeftThumbStick:
-                    if (down) return Player.LeftController.GetThumbStickDown();
-                    return Player.LeftController.GetThumbStick();
-
-                case ControllerInputs.RightThumbStick:
-                    if (down) return Player.RightController.GetThumbStickDown();
-                    return Player.RightController.GetThumbStick();
-
-                case ControllerInputs.LeftTouchPad:
-                    if (down) return Player.LeftController.GetTouchPadDown();
-                    return Player.LeftController.GetTouchPad();
-
-                case ControllerInputs.RightTouchPad:
-                    if (down) return Player.RightController.GetTouchPadDown();
-                    return Player.RightController.GetTouchPad();
-            }
-            Logger.Warn($"Invalid Controller input name '{input}'");
             return false;
         }
     }
