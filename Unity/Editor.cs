@@ -71,34 +71,7 @@ namespace AvatarAnimator
 
         public void Help()
         {
-            Logger.MsgInfo("Step 1:");
-            Logger.Msg("In the Animator controller of your avatar, add a Layer named 'AvatarAnimator' and in the layer settings push the weigth to 1 to make it visible.");
-            Logger.Msg("Add your clips and add the transition between them");
-            Logger.Msg("In the Parameters tabs, you can add different types of parameter that are handle by the mod.");
-            Logger.Msg("");
-            Logger.Msg(" - As Tigger: <b>Input=...</b>");
-            Logger.Msg("Put this to animate using your inputs");
-            LogInputHelp();
-            Logger.Msg("");
-            Logger.Msg(" - As Int: <b>Random(max)</b> or <b>Random(min,max)<b> ");
-            Logger.Msg("Put this to select a random transition among multiple");
-            Logger.Msg("");
-            Logger.Msg(" - As Float: <b>Health</b>");
-            Logger.Msg("Put this to Animate using the health of your avatar");
-            Logger.Msg("");
-            Logger.Msg(" - As Float: <b>Timer</b>");
-            Logger.Msg("Put this to play an animation after some time");
-            Logger.Msg("");
-            Logger.Msg(" - As Int: <b>Cyclic(max)</b>");
-            Logger.Msg("Put this to select a transition cyclicly among multiple");
-            Logger.Msg("");
-            Logger.Msg("Once done, add in the transition the condition to change to the next state.");
-            Logger.MsgInfo("Step 2:");
-            Logger.Msg("When you're finish with the Animator Controller, go back to the Component and push the button 'Populate Data'");
-            Logger.Msg("Look in this console if there are any error(s) or warning(s) and correct them.");
-            Logger.Msg("You can control the data that have been collected by using 'Test Data'.");
-            Logger.Msg("When done, push the button 'Compact Data'.");
-            Logger.Msg("Now you can pack the pallet.");
+            Application.OpenURL("https://github.com/seb-dal/Bonelab-AvatarAnimator/wiki/How-to-use-in-Unity");
         }
 
 
@@ -414,7 +387,7 @@ namespace AvatarAnimator
             style.normal.textColor = Color.white;
             foreach (var log in logs)
             {
-                GUILayout.Label(log, style);
+                GUILayout.TextArea(log, style);
             }
             EditorGUILayout.EndScrollView();
 
