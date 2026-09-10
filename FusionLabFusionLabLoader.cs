@@ -19,10 +19,10 @@ namespace AvatarAnimator
                 catch (Exception ex)
                 {
                     Logger.Err("Error registering Fusion module: " + ex.Message);
-                    return;
                 }
             }
             else Logger.Msg("LabFusion not detected - running in singleplayer mode");
+            CorePrivate.SimplePlayerMonitoring();
         }
     }
 }

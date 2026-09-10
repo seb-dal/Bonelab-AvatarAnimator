@@ -3,6 +3,7 @@ using BoneLib;
 using Il2CppSLZ.Marrow;
 using Il2CppSLZ.Marrow.Warehouse;
 using UnityEngine;
+using static Il2CppSLZ.VRMK.Avatar;
 
 namespace AvatarAnimator
 {
@@ -97,6 +98,11 @@ namespace AvatarAnimator
                     Logger.Dbg?.Debug($" Parent Composant IL2CPP : {nativeType.FullName}");
                 }
             }
+        }
+
+        public static string ToString(HandSchematic hand)
+        {
+            return $"{hand.thumb1} ({hand.thumb2} {hand.thumb3})  {hand.index1} ({hand.index2} {hand.index3})   {hand.middle1} ({hand.middle2} {hand.middle3})   {hand.ring1} ({hand.ring2} {hand.ring3})   {hand.pinky1} ({hand.pinky2} {hand.pinky3})";
         }
     }
 }

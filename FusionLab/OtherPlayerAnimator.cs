@@ -27,9 +27,13 @@ namespace AvatarAnimator.FusionLab
 
         public List<ScannedData> Mirrors { get => m_mirrorAnimators; }
 
+        public OtherPlayerAnimator(NetworkPlayer player, PlayerID playerId)
+        {
+            m_player = ScannedDataFusion.Create(player, playerId);
+        }
         public OtherPlayerAnimator(PlayerID playerId)
         {
-            m_player = new ScannedDataFusion(playerId);
+            m_player = ScannedDataFusion.Create(playerId);
         }
 
         public void SetAnimatorState(OtherPlayerState state)
@@ -50,23 +54,39 @@ namespace AvatarAnimator.FusionLab
     {
         protected PlayerID m_PlayerId;
         protected NetworkPlayer m_NetworkPlayer;
-        public ScannedDataFusion(PlayerID id)
+
+        public ScannedDataFusion() { }
+
+        public static ScannedDataFusion Create(NetworkPlayer player, PlayerID id)
         {
-            m_PlayerId = id;
-            if (NetworkPlayerManager.TryGetPlayer(id, out var player))
+            ScannedDataFusion data = new();
+            data.m_PlayerId = id;
+            data.Init(player);
+            return data;
+        }
+        public static ScannedDataFusion Create(PlayerID id)
+        {
+            ScannedDataFusion data = new();
+            data.m_PlayerId = id;
+            if (NetworkPlayerManager.TryGetPlayer(id.SmallID, out var player))
             {
-                m_NetworkPlayer = player;
-                m_Source = ScannedDataSources.OtherPlayer;
-                m_RigManager = player.RigRefs.RigManager;
-                m_id = id;
-                UpdateAvatar();
+                data.Init(player);
             }
             else
             {
-                m_Source = ScannedDataSources.Invalid;
-                Logger.Err($"Player with id '{id}' didn't give NetworkPlayer ;( ");
-                return;
+                data.m_Source = ScannedDataSources.Invalid;
+                Logger.Err($"Player with id '{id.SmallID}' didn't give NetworkPlayer ;( ");
             }
+            return data;
+        }
+
+        private void Init(NetworkPlayer player)
+        {
+            m_NetworkPlayer = player;
+            m_RigManager = player.RigRefs.RigManager;
+            m_id = m_PlayerId.SmallID;
+            UpdateAvatar();
+            m_Source = ScannedDataSources.OtherPlayer;
         }
 
         protected override void SetAvatar()

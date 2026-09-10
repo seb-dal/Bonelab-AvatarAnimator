@@ -23,20 +23,25 @@ namespace AvatarAnimator
         protected Mirror m_Mirror = null;
         protected byte m_id;
 
-        public ScannedData()
+        public ScannedData() { }
+        public static ScannedData Create()
         {
-            m_Source = ScannedDataSources.Player;
-            m_RigManager = Player.RigManager;
-            m_id = Utils.GetPlayerId(m_RigManager);
-            UpdateAvatar();
+            ScannedData data = new();
+            data.m_Source = ScannedDataSources.Player;
+            data.m_RigManager = Player.RigManager;
+            data.m_id = Utils.GetPlayerId(data.m_RigManager);
+            data.UpdateAvatar();
+            return data;
         }
-        public ScannedData(Mirror mirror)
+        public static ScannedData Create(Mirror mirror)
         {
-            m_Source = ScannedDataSources.Mirror;
-            m_Mirror = mirror;
-            m_RigManager = mirror.rigManager;
-            m_id = Utils.GetPlayerId(m_RigManager);
-            UpdateAvatar();
+            ScannedData data = new();
+            data.m_Source = ScannedDataSources.Mirror;
+            data.m_Mirror = mirror;
+            data.m_RigManager = mirror.rigManager;
+            data.m_id = Utils.GetPlayerId(data.m_RigManager);
+            data.UpdateAvatar();
+            return data;
         }
 
         public AvatarAnimatorDataContainer Container { get => m_Cont; }
@@ -69,14 +74,16 @@ namespace AvatarAnimator
         {
             SetAvatar();
             m_Barcode = m_RigManager.AvatarCrate.Barcode;
-            m_Cont = m_Avatar.gameObject.GetComponentInChildren<AvatarAnimatorDataContainer>();
+            if (ScannedDataSources.Invalid != m_Source)
+                m_Cont = m_Avatar.gameObject.GetComponent<AvatarAnimatorDataContainer>();
             if (null != m_Cont)
             {
                 m_Cont.UncompactData();
                 Logger.Msg($"AvatarAnimator '{Barcode.ToString()}' Data found");
                 Logger.Dbg?.Data(m_Cont.m_CompactedData);
+                Logger.Dbg?.StackTrace();
             }
-            Logger.Dbg?.Info($"id:'{m_id}', Rig:'{null != m_RigManager}', Avatar:'{null != m_Avatar}', Cont:'{null != m_Cont}', Anim:'{null != m_Cont?.m_Animator}'");
+            Logger.Dbg?.Info($"id:'{m_id}', sc:{m_Source}, Rig:'{null != m_RigManager}', Avatar:'{null != m_Avatar}', Cont:'{null != m_Cont}', Anim:'{null != m_Cont?.m_Animator}'");
         }
     }
 
@@ -104,7 +111,7 @@ namespace AvatarAnimator
         public static void GetPlayerAvatarAnimator()
         {
             bool hasAvatarChange = Player.RigManager.AvatarCrate.Barcode != PlayerData?.Barcode;
-            if (!hasAvatarChange || null == PlayerData) PlayerData = new();
+            if (!hasAvatarChange || null == PlayerData) PlayerData = ScannedData.Create();
             else PlayerData.UpdateAvatar();
             if (hasAvatarChange) OnPlayerAvatarChange?.Invoke(PlayerData);
             else OnPlayerAvatarSame?.Invoke(PlayerData);
@@ -130,7 +137,7 @@ namespace AvatarAnimator
             {
                 if (null == e || null == e?.rigManager || null == e?.Reflection) continue;
                 if (null != m_all.Find((e2) => Utils.RefEquals(e2.RigManager, e.rigManager))) continue;
-                ScannedData d = new(e);
+                ScannedData d = ScannedData.Create(e);
                 m_all.Add(d);
                 OnNew?.Invoke(d);
                 add += 1;

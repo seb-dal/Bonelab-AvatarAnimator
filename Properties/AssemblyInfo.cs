@@ -7,6 +7,7 @@ using System.Diagnostics;
 
 [assembly: CompilationRelaxations(8)]
 [assembly: RuntimeCompatibility(WrapNonExceptionThrows = true)]
+// For code line in stacktrace
 [assembly: Debuggable(DebuggableAttribute.DebuggingModes.IgnoreSymbolStoreSequencePoints)]
 
 [assembly: AssemblyTitle(AvatarAnimator.BuildInfo.Name)]
@@ -23,5 +24,6 @@ using System.Diagnostics;
 [assembly: AssemblyFileVersion(AvatarAnimator.BuildInfo.Version)]
 [assembly: NeutralResourcesLanguage("en")]
 
+[assembly: MelonColor(255, 0, 128, 0)]
 [assembly: MelonInfo(typeof(AvatarAnimator.Core), AvatarAnimator.BuildInfo.Name, AvatarAnimator.BuildInfo.Version, AvatarAnimator.BuildInfo.Author, AvatarAnimator.BuildInfo.DownloadLink)]
 [assembly: MelonOptionalDependencies(new string[] { "LabFusion" })]

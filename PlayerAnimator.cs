@@ -53,7 +53,7 @@ namespace AvatarAnimator
                 m_player = player;
                 if (!m_player.HasAvatarAnimatorData)
                 {
-                    Logger.Dbg.Info("PlayerAvatarChange: Current Animator doesn't have data");
+                    Logger.Dbg?.Info("PlayerAvatarChange: Current Animator doesn't have data");
                     return;
                 }
                 // Initialise Values
@@ -88,7 +88,7 @@ namespace AvatarAnimator
                 m_player = player;
                 if (!m_player.HasAvatarAnimatorData)
                 {
-                    Logger.Dbg.Info("PlayerAvatarSame: Current Animator doesn't have data");
+                    Logger.Dbg?.Info("PlayerAvatarSame: Current Animator doesn't have data");
                     return;
                 }
                 // Restore Values
