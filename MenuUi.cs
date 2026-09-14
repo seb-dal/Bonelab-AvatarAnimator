@@ -14,7 +14,7 @@ namespace AvatarAnimator
         {
             m_modPage = Page.Root.CreatePage(BuildInfo.Name, Color.cyan, 0, true);
             m_AvatarStatePage = m_modPage.CreatePage("Play Avatar state", Color.green);
-            Scanner.OnPlayerAvatarChange += MenuUi.OnAvatarChanged;
+            PlayerScanner.OnAvatarChange += MenuUi.OnAvatarChanged;
         }
 
         public static void OnAvatarChanged(ScannedData player)

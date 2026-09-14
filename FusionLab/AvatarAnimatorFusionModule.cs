@@ -28,55 +28,22 @@ namespace AvatarAnimator.FusionLab
 
         protected override void OnModuleRegistered()
         {
-            Logger.Msg("Module registered");
+            Logger.Msg("AvatarAnimatorFusionModule registered");
             Utils.GetPlayerId = (RigManager rig) =>
             {
-                try
-                {
-                    if (NetworkPlayerManager.TryGetPlayer(rig, out var player))
-                    {
-                        return player.PlayerID.SmallID;
-                    }
-                    else
-                    {
-                        Logger.Warn($"Player RigManager with Avatar {rig.AvatarCrate.Barcode.ToString()} doesn't have a Player Id");
-                        foreach (var p in NetworkPlayer.Players)
-                        {
-                            Logger.Dbg?.Data($"Id:{p.PlayerID.SmallID} {p.RigRefs.RigManager.AvatarCrate.Barcode.ToString()} {Utils.RefEquals(rig, p.RigRefs.RigManager)}");
-                            Logger.Dbg?.Data($"{Equals(rig, p.RigRefs.RigManager)} {p.RigRefs.RigManager.ToString()} {p.RigRefs.RigManager.Pointer} {rig.ToString()} {rig.Pointer}");
-
-                            Logger.Dbg?.Data($"{rig.AvatarCrate.Barcode.ToString()}  |  {p.RigRefs.RigManager.AvatarCrate.Barcode.ToString()}");
-                            Logger.Dbg?.Data($"{Debug.ToString(rig.avatar.handSchematicLf)}");
-                            Logger.Dbg?.Data($"{Debug.ToString(p.RigRefs.RigManager.avatar.handSchematicLf)}");
-                            Logger.Dbg?.Data($"");
-                            Logger.Dbg?.Data($"{Debug.ToString(rig.avatar.handSchematicRt)}");
-                            Logger.Dbg?.Data($"{Debug.ToString(p.RigRefs.RigManager.avatar.handSchematicRt)}");
-                            Logger.Dbg?.Data($"");
-                            Logger.Dbg?.Data($"{rig.avatar.wristRt.ToString()}");
-                            Logger.Dbg?.Data($"{p.RigRefs.RigManager.avatar.wristRt.ToString()}");
-                            Logger.Dbg?.Data($"");
-                            Logger.Dbg?.Data($"{rig.avatar.wristLf.ToString()}");
-                            Logger.Dbg?.Data($"{p.RigRefs.RigManager.avatar.wristLf.ToString()}");
-
-                            if (Player.RigManager == rig && p.PlayerID.IsMe) return p.PlayerID.SmallID;
-
-                            if (Utils.RefEquals(rig, p.RigRefs.RigManager)) return p.PlayerID.SmallID;
-                        }
-                    }
-                }
-                catch (Exception e)
-                {
-                    Logger.Err(e.ToString());
-                }
-                return 0;
+                if (!isOnline) return 0;
+                if (NetworkPlayerManager.TryGetPlayer(rig, out var player))
+                    return player.PlayerID.SmallID;
+                throw new Exception($"Player RigManager with Avatar {rig.AvatarCrate.Barcode.ToString()} doesn't have a Player Id");
             };
 
-            Scanner.OnNew += OnNew;
-            Scanner.OnRemoved += OnRemoved;
-            Scanner.OnClear += OnClear;
+            MirrorScanner.OnNew += OnNew;
+            MirrorScanner.OnRemoved += OnRemoved;
+            MirrorScanner.OnClear += OnClear;
             ModuleMessageManager.RegisterHandler<PlayerStateChangeMessageModule>();
             MultiplayerHooking.OnPlayerJoined += OnPlayerJoined;
             MultiplayerHooking.OnPlayerLeft += OnPlayerLeft;
+            MultiplayerHooking.OnStartedServer += OnJoinedServer;
             MultiplayerHooking.OnJoinedServer += OnJoinedServer;
             MultiplayerHooking.OnDisconnected += OnDisconnected;
             PlayerAnimator.OnAvatarStateChanged += OnAvatarStateChanged;
@@ -91,6 +58,7 @@ namespace AvatarAnimator.FusionLab
                 if (1 == playersConnecting.Count) Core.OnUpdateEvt += PlayerConnecting;
             };
 
+            CorePrivate.SimplePlayerMonitoring();
         }
 
         protected override void OnModuleUnregistered()
@@ -98,9 +66,9 @@ namespace AvatarAnimator.FusionLab
             Logger.Msg("Module unregistered");
             players.Clear();
             PlayerStateChangeMessageModule.WaitingList.Clear();
-            Scanner.OnNew -= OnNew;
-            Scanner.OnRemoved -= OnRemoved;
-            Scanner.OnClear -= OnClear;
+            MirrorScanner.OnNew -= OnNew;
+            MirrorScanner.OnRemoved -= OnRemoved;
+            MirrorScanner.OnClear -= OnClear;
             MultiplayerHooking.OnPlayerJoined -= OnPlayerJoined;
             MultiplayerHooking.OnPlayerLeft -= OnPlayerLeft;
             MultiplayerHooking.OnJoinedServer -= OnJoinedServer;
@@ -113,6 +81,7 @@ namespace AvatarAnimator.FusionLab
         public static void ChangeOtherPlayerState(OtherPlayerState states)
         {
             if (!players.ContainsKey(states.m_smallId)) return;
+            Logger.Dbg?.Info("Change other Player animator state");
             players[states.m_smallId].SetAnimatorState(states);
         }
 
@@ -140,6 +109,9 @@ namespace AvatarAnimator.FusionLab
                 Logger.Dbg?.Info($"Player '{player.PlayerID.SmallID}' Join");
                 players.Add(player.PlayerID.SmallID, new(player, player.PlayerID));
                 playersConnecting.Remove(elem.Key);
+
+                if (player.PlayerID.IsMe) continue;
+                PlayerStateChangeMessageModule.SendMessageTo(player.PlayerID.SmallID, new(PlayerAnimator.Id, null, PlayerAnimator.GetPlayerStates()));
             }
         }
 
@@ -148,19 +120,20 @@ namespace AvatarAnimator.FusionLab
         private void OnNew(ScannedData data)
         {
             if (!players.ContainsKey(data.Id)) return;
-            Logger.Dbg?.Info($"Add Mirror to Other Player {data.Id}");
             var other = players[data.Id];
-            other.Mirrors.Add(data);
+            if (other.IsMe()) return;
+            Logger.Dbg?.Info($"Add Mirror to Other Player {data.Id}");
+            other.AddMirror(data);
         }
         private void OnRemoved(ScannedData data)
         {
             if (!players.ContainsKey(data.Id)) return;
             var other = players[data.Id];
-            other.Mirrors.Remove(data);
+            other.RemoveMirror(data);
         }
         private void OnClear()
         {
-            foreach (var other in players) { other.Value.Mirrors.Clear(); }
+            foreach (var other in players) { other.Value.ClearMirrors(); }
         }
         private void OnPlayerJoined(PlayerID id)
         {
@@ -181,10 +154,6 @@ namespace AvatarAnimator.FusionLab
             foreach (var p in NetworkPlayer.Players)
             {
                 Logger.Dbg?.Info($"Player '{p.PlayerID.SmallID}'");
-                if (!p.PlayerID.IsMe) // "PlayerID.IsMe" is done by OnLevelLoaded
-                {
-                    players.Add(p.PlayerID.SmallID, new(p.PlayerID));
-                }
             }
         }
         private void OnDisconnected()
@@ -197,15 +166,15 @@ namespace AvatarAnimator.FusionLab
 
         private void OnAvatarStateChanged(PlayerStateChange change)
         {
+            if (!isOnline) return;
             PlayerStateChangeMessageModule.SendMessage(new(PlayerAnimator.Id, change));
         }
         private void OnPlayerMetadataChangedEvent(PlayerID playerId, string key, string value)
         {
             if (!players.ContainsKey(playerId.SmallID)) return;
-            var other = players[playerId.SmallID];
-            if (key == "AvatarBarcode" || key.Contains("Avatar"))
+            if ("AvatarTitle" == key)
             {
-                Logger.Dbg?.Data($"key:{key} value:{value}");
+                Logger.Dbg?.Data($"key:'{key}' value:'{value}'");
                 if (playerId.IsMe)
                 {
                     Logger.Dbg?.Info($"Player avatar changed");
@@ -213,6 +182,7 @@ namespace AvatarAnimator.FusionLab
                 }
                 else
                 {
+                    var other = players[playerId.SmallID];
                     Logger.Dbg?.Info($"Other Player '{playerId.SmallID}' avatar changed");
                     other.OnAvatarChanged();
                 }
@@ -226,7 +196,6 @@ namespace AvatarAnimator.FusionLab
                 ChangeOtherPlayerState(states);
             }
             PlayerStateChangeMessageModule.WaitingList.Clear();
-            CorePrivate.UpdatePlayerAvatar();
         }
     }
 
@@ -239,21 +208,27 @@ namespace AvatarAnimator.FusionLab
         {
             var data = new MyNetSerializable() { m_data = OtherPlayerState.Serialize(d), };
             Logger.Dbg?.Data($"Msg sent '{data.m_data}'");
-            MessageRelay.RelayModule<PlayerStateChangeMessageModule, MyNetSerializable>(data, new MessageRoute(RelayType.ToOtherClients, NetworkChannel.Reliable));
+            MessageRelay.RelayModule<PlayerStateChangeMessageModule, MyNetSerializable>(data, new(RelayType.ToOtherClients, NetworkChannel.Reliable));
+        }
+        public static void SendMessageTo(byte smallId, OtherPlayerState d)
+        {
+            var data = new MyNetSerializable() { m_data = OtherPlayerState.Serialize(d), };
+            Logger.Dbg?.Data($"Msg sent '{data.m_data}' to {smallId}");
+            MessageRelay.RelayModule<PlayerStateChangeMessageModule, MyNetSerializable>(data, new(smallId, NetworkChannel.Reliable));
         }
         protected override void OnHandleMessage(ReceivedMessage received)
         {
             var data = received.ReadData<MyNetSerializable>();
-            Logger.Dbg?.Info($"Msg received '{data.m_data}'");
-            var state = OtherPlayerState.Deserialize(data.m_data);
-            if (PlayerAnimator.Id == state.m_smallId) return;
+            var state_s = OtherPlayerState.Deserialize(data.m_data);
+            Logger.Dbg?.Data($"Msg received '{data.m_data}' from {state_s.m_smallId}");
+            if (PlayerAnimator.Id == state_s.m_smallId) return;
             if (Core.IsLevelLoading)
             {
                 Logger.Dbg?.Info($"Level didn't finish to load, store Message data");
-                m_waitingList.Add(state);
+                m_waitingList.Add(state_s);
                 return;
             }
-            AvatarAnimatorFusionModule.ChangeOtherPlayerState(state);
+            AvatarAnimatorFusionModule.ChangeOtherPlayerState(state_s);
         }
     }
 

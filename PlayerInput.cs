@@ -65,10 +65,10 @@ namespace AvatarAnimator
         }
     }
 
-    public class PlayerInput
+    public static class PlayerInput
     {
         private static long m_frame = 0;
-        /// <summary> For sharing input across multiple transitions </summary>
+        // For sharing input across multiple transitions
         private static readonly Dictionary<string, long> m_inputPressed = new();
 
         public static void Clear()

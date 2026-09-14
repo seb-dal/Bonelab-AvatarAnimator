@@ -31,7 +31,7 @@ namespace AvatarAnimator
         {
             Config.Initialize();
             updateScanner = new UpdateTimeGate(Config.ScanMirrorsInterval);
-            updateAnim = new UpdateTimeGate(Config.PlayerAnimatorUpdateInterval);
+            updateAnim = new UpdateTimeGate(2);
             Logger.Initialize(LoggerInstance);
             MenuUi.Initialize();
             PlayerAnimator.Initialize();
@@ -39,7 +39,7 @@ namespace AvatarAnimator
             Hooking.OnLevelUnloaded += () =>
             {
                 enabled = false;
-                Scanner.Clear();
+                MirrorScanner.Clear();
             };
             Hooking.OnLevelLoading += (LevelInfo _) => { enabled = false; };
             Hooking.OnLevelLoaded += (LevelInfo _) =>
@@ -51,8 +51,8 @@ namespace AvatarAnimator
 
             // Other mods hook
             PlayerAnimator.OnAvatarStateChanged += OnAvatarStateChanged;
-            Scanner.OnPlayerAvatarChange += OnPlayerAvatarChange;
-            Scanner.OnPlayerAvatarSame += OnPlayerAvatarSame;
+            PlayerScanner.OnAvatarChange += OnPlayerAvatarChange;
+            PlayerScanner.OnAvatarSame += OnPlayerAvatarSame;
         }
 
         public override void OnUpdate()
@@ -60,7 +60,7 @@ namespace AvatarAnimator
             if (!enabled) return;
             LocalInput.Update();
             OnUpdateEvt?.Invoke();
-            if (updateScanner.Now()) Scanner.ScanForAvatarAnimator();
+            if (updateScanner.Now()) MirrorScanner.Scan();
             if (updateAnim.Now()) PlayerAnimator.Update();
         }
     }
@@ -69,19 +69,25 @@ namespace AvatarAnimator
     public class CorePrivate
     {
         private static bool switchAvatarHooked = false;
+        private static bool updateAvatarChangeLater = false;
 
         private static void UpdateAvatarChangeLater()
         {
-            Scanner.GetPlayerAvatarAnimator();
+            PlayerScanner.GetAvatarAnimator();
             Core.OnUpdateEvt -= UpdateAvatarChangeLater;
+            updateAvatarChangeLater = false;
         }
-        public static void UpdatePlayerAvatar() => Core.OnUpdateEvt += UpdateAvatarChangeLater;
-        private static void OnSwitchAvatarPostfix(Il2CppSLZ.VRMK.Avatar _) => UpdatePlayerAvatar();
+        public static void UpdatePlayerAvatar()
+        {
+            if (updateAvatarChangeLater) return;
+            Core.OnUpdateEvt += UpdateAvatarChangeLater;
+            updateAvatarChangeLater = true;
+        }
+        private static void OnSwitchAvatarPostfix(Il2CppSLZ.VRMK.Avatar _) { UpdatePlayerAvatar(); }
         public static void SimplePlayerMonitoring()
         {
             if (switchAvatarHooked) return;
             Logger.Dbg?.Info("Simple PlayerMonitoring");
-            // Barcode and RigManager are not yet updated when using Hooking.OnSwitchAvatarPostfix
             Hooking.OnSwitchAvatarPostfix += OnSwitchAvatarPostfix;
             switchAvatarHooked = true;
         }

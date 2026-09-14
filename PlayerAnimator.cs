@@ -3,12 +3,21 @@ using Newtonsoft.Json;
 
 namespace AvatarAnimator
 {
+    [Serializable]
     public class PlayerStateChange
     {
+        [JsonProperty("layer")]
         public int m_Layer;
+        [JsonProperty("state")]
         public string m_State;
+        [JsonProperty("time", NullValueHandling = NullValueHandling.Ignore)]
+        public float? m_Time = null;
+
+        public PlayerStateChange() { }
         public PlayerStateChange(int layer, string state) { m_Layer = layer; m_State = state; }
+        public PlayerStateChange(int layer, string state, float time) : this(layer, state) { m_Time = time; }
     }
+
     public static class PlayerAnimator
     {
         public class LayerAnimator
@@ -34,17 +43,18 @@ namespace AvatarAnimator
         /// <summary> Store values for level change </summary>
         private static readonly Dictionary<string, int> m_StoreValues = new();
 
-        public static bool HasAvatarAnimatorData { get => null != m_player?.Container; }
+        public static bool IsValid { get => null != m_player?.Container && m_player.IsValid; }
         public static byte Id { get => m_player.Id; }
 
         public static void Initialize()
         {
-            Scanner.OnClear += () =>
+            MirrorScanner.OnClear += () =>
             {
                 m_mirrorAnimators.Clear();
             };
-            Scanner.OnPlayerAvatarChange += (ScannedData player) =>
+            PlayerScanner.OnAvatarChange += (ScannedData player) =>
             {
+                Logger.Dbg?.Info("OnAvatarChange");
                 PlayerInput.Clear();
                 m_StoreValues.Clear();
                 m_Layers.Clear();
@@ -71,6 +81,7 @@ namespace AvatarAnimator
                         default: break;
                     }
                 }
+                if (!IsValid) return;
                 // Initialise and get layers/states values 
                 int i = 0;
                 foreach (var layer in m_player.Data.ListLayer)
@@ -83,14 +94,16 @@ namespace AvatarAnimator
                 // Avatar change in front of a mirror
                 foreach (var mirror in m_mirrorAnimators) { mirror.UpdateAvatar(); }
             };
-            Scanner.OnPlayerAvatarSame += (ScannedData player) =>
+            PlayerScanner.OnAvatarSame += (ScannedData player) =>
             {
+                Logger.Dbg?.Info("OnAvatarSame");
                 m_player = player;
                 if (!m_player.HasAvatarAnimatorData)
                 {
                     Logger.Dbg?.Info("PlayerAvatarSame: Current Animator doesn't have data");
                     return;
                 }
+                if (!IsValid) return;
                 // Restore Values
                 foreach (var trans in m_player.Data.TransitionsData)
                 {
@@ -107,7 +120,7 @@ namespace AvatarAnimator
                 foreach (var layer in m_Layers) { PlayState(layer.m_LayerIndex, layer.m_CurrentStateName, false); }
             };
 
-            Scanner.OnNew += (ScannedData data) =>
+            MirrorScanner.OnNew += (ScannedData data) =>
             {
                 Logger.Dbg?.Info($"Data:({data.Barcode.ToString()} PlayerID:'{data.Id}') Player:({m_player.Barcode.ToString()} PlayerID:'{m_player.Id}')");
                 if (data.Barcode != m_player.Barcode) return;
@@ -115,10 +128,14 @@ namespace AvatarAnimator
                 Logger.Dbg?.Info($"Add Mirror to Player");
                 m_mirrorAnimators.Add(data);
                 // Set the Mirror entity States
-                foreach (var layer in m_Layers) { data.Animator.Play(layer.m_CurrentStateName, layer.m_LayerIndex); }
+                foreach (var layer in m_Layers)
+                {
+                    var state = m_player.Animator.GetCurrentAnimatorStateInfo(layer.m_LayerIndex);
+                    data.Animator.Play(layer.m_CurrentStateName, layer.m_LayerIndex, state.normalizedTime);
+                }
             };
 
-            Scanner.OnRemoved += (ScannedData data) =>
+            MirrorScanner.OnRemoved += (ScannedData data) =>
             {
                 m_mirrorAnimators.Remove(data);
             };
@@ -126,21 +143,25 @@ namespace AvatarAnimator
 
         public static void SetCurentState(int layer, string state, bool updateValues = true)
         {
+            if (!IsValid) return;
             if (!m_LayerIndexToIndex.ContainsKey(layer)) return;
             int indexLayer = m_LayerIndexToIndex[layer];
-            m_Layers[indexLayer].m_CurrentStateName = state;
-            m_Layers[indexLayer].m_CurrentState = m_player.Data.ListLayer[indexLayer].States[state];
+            var layerObj = m_Layers[indexLayer];
+            layerObj.m_CurrentStateName = state;
+            layerObj.m_CurrentState = m_player.Data.ListLayer[indexLayer].States[state];
             foreach (var anim in m_mirrorAnimators) anim.Animator.Play(state, layer);
-            Logger.Msg($"Player: {m_player.Barcode.ToString()} Current state change to {state}");
-            Logger.Dbg?.Data(JsonConvert.SerializeObject(m_Layers[indexLayer].m_CurrentState, Formatting.None));
+            Logger.Msg($"Player: {m_player.Barcode.ToString()} Current state change to '{state}'");
+            Logger.Dbg?.Data(JsonConvert.SerializeObject(layerObj.m_CurrentState, Formatting.None));
             OnAvatarStateChanged?.Invoke(new(layer, state));
 
             if (!updateValues) return;
-            // Only update values if there will be used
-            foreach (var trans in m_Layers[indexLayer].m_CurrentState.Transitions)
+            // Only update values if they will be used
+            HashSet<string> done = new(); // and only once
+            foreach (var trans in layerObj.m_CurrentState.Transitions)
             {
                 foreach (var cond in trans.Conditions)
                 {
+                    if (done.Contains(cond.Name)) continue;
                     switch (cond.Type)
                     {
                         case ConditionType.Random:
@@ -160,19 +181,21 @@ namespace AvatarAnimator
                             }
                             break;
                     }
+                    done.Add(cond.Name);
                 }
             }
         }
 
         public static void PlayState(int layer, string state, bool updateValues = true)
         {
+            if (!IsValid) return;
             m_player.Animator.Play(state, layer);
             SetCurentState(layer, state, updateValues);
         }
 
         public static void Update()
         {
-            if (!HasAvatarAnimatorData) return;
+            if (!IsValid) return;
             PlayerInput.Next();
             foreach (var layer in m_Layers)
             {
@@ -259,6 +282,17 @@ namespace AvatarAnimator
                     }
             }
             return true;
+        }
+
+        public static List<PlayerStateChange> GetPlayerStates()
+        {
+            List<PlayerStateChange> states = new();
+            foreach (var state in m_Layers)
+            {
+                var st = m_player.Animator.GetCurrentAnimatorStateInfo(state.m_LayerIndex);
+                states.Add(new(state.m_LayerIndex, state.m_CurrentStateName, st.m_NormalizedTime));
+            }
+            return states;
         }
     }
 }

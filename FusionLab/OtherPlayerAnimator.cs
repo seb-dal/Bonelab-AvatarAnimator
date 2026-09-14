@@ -5,15 +5,19 @@ using LabFusion.Entities;
 
 namespace AvatarAnimator.FusionLab
 {
+    [Serializable]
     public class OtherPlayerState
     {
+        [JsonProperty("small_id")]
         public byte m_smallId;
-        public PlayerStateChange m_StateChange;
+        [JsonProperty("states")]
+        public List<PlayerStateChange> m_States = new();
 
-        public OtherPlayerState(byte smallId, PlayerStateChange change)
+        public OtherPlayerState(byte smallId, PlayerStateChange change = null, List<PlayerStateChange> states = null)
         {
             m_smallId = smallId;
-            m_StateChange = change;
+            if (null != change) m_States.Add(change);
+            if (null != states) m_States.AddRange(states);
         }
 
         public static string Serialize(OtherPlayerState obj) => JsonConvert.SerializeObject(obj, Formatting.None);
@@ -23,24 +27,33 @@ namespace AvatarAnimator.FusionLab
     public class OtherPlayerAnimator
     {
         private readonly List<ScannedData> m_mirrorAnimators = new();
+        private readonly Dictionary<int, PlayerStateChange> m_States = new();
         private readonly ScannedDataFusion m_player = null;
 
-        public List<ScannedData> Mirrors { get => m_mirrorAnimators; }
+        private List<ScannedData> Mirrors { get => m_mirrorAnimators; }
 
         public OtherPlayerAnimator(NetworkPlayer player, PlayerID playerId)
         {
             m_player = ScannedDataFusion.Create(player, playerId);
-        }
-        public OtherPlayerAnimator(PlayerID playerId)
-        {
-            m_player = ScannedDataFusion.Create(playerId);
+            foreach (var layer in m_player.Data.ListLayer)
+            {
+                m_States.Add(layer.LayerIndex, new(layer.LayerIndex, layer.StartState));
+            }
         }
 
-        public void SetAnimatorState(OtherPlayerState state)
+        public void SetAnimatorState(OtherPlayerState states)
         {
-            if (null != state || !m_player.IsValid) return;
-            m_player.Animator.Play(state.m_StateChange.m_State, state.m_StateChange.m_Layer);
-            foreach (var mirror in m_mirrorAnimators) mirror.Animator.Play(state.m_StateChange.m_State, state.m_StateChange.m_Layer);
+            if (null != states || !m_player.IsValid)
+            {
+                Logger.Dbg?.Warn("Cannot change state");
+                return;
+            }
+            foreach (var state in states.m_States)
+            {
+                m_player.Animator.Play(state.m_State, state.m_Layer);
+                foreach (var mirror in m_mirrorAnimators) mirror.Animator.Play(state.m_State, state.m_Layer);
+                m_States.Add(state.m_Layer, state);
+            }
         }
 
         public void OnAvatarChanged()
@@ -48,6 +61,25 @@ namespace AvatarAnimator.FusionLab
             m_player.UpdateAvatar();
             foreach (var mirror in m_mirrorAnimators) mirror.UpdateAvatar();
         }
+
+        public void AddMirror(ScannedData data)
+        {
+            Mirrors.Add(data);
+            foreach (var layer in m_States)
+            {
+                var state = m_player.Animator.GetCurrentAnimatorStateInfo(layer.Value.m_Layer);
+                data.Animator.Play(layer.Value.m_State, layer.Value.m_Layer, state.normalizedTime);
+            }
+        }
+        public void RemoveMirror(ScannedData data)
+        {
+            Mirrors.Remove(data);
+        }
+        public void ClearMirrors()
+        {
+            Mirrors.Clear();
+        }
+        public bool IsMe() => m_player.IsMe();
     }
 
     public class ScannedDataFusion : ScannedData
@@ -60,34 +92,16 @@ namespace AvatarAnimator.FusionLab
         public static ScannedDataFusion Create(NetworkPlayer player, PlayerID id)
         {
             ScannedDataFusion data = new();
+            data.m_Source = ScannedDataSources.OtherPlayer;
             data.m_PlayerId = id;
-            data.Init(player);
-            return data;
-        }
-        public static ScannedDataFusion Create(PlayerID id)
-        {
-            ScannedDataFusion data = new();
-            data.m_PlayerId = id;
-            if (NetworkPlayerManager.TryGetPlayer(id.SmallID, out var player))
-            {
-                data.Init(player);
-            }
-            else
-            {
-                data.m_Source = ScannedDataSources.Invalid;
-                Logger.Err($"Player with id '{id.SmallID}' didn't give NetworkPlayer ;( ");
-            }
+            data.m_NetworkPlayer = player;
+            data.m_RigManager = player.RigRefs.RigManager;
+            data.m_id = data.m_PlayerId.SmallID;
+            data.UpdateAvatar();
             return data;
         }
 
-        private void Init(NetworkPlayer player)
-        {
-            m_NetworkPlayer = player;
-            m_RigManager = player.RigRefs.RigManager;
-            m_id = m_PlayerId.SmallID;
-            UpdateAvatar();
-            m_Source = ScannedDataSources.OtherPlayer;
-        }
+        public bool IsMe() => m_PlayerId.IsMe;
 
         protected override void SetAvatar()
         {
