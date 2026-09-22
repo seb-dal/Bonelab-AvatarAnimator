@@ -14,4 +14,5 @@ And `Logger.DbgInfo($"____")` with the "if(...)" inside the function mean that t
 - When level change, Player Avatar data must be updated regardless if some of the data is not valid yet to avoid keeping ref to deleted object.
 
 - `OtherPlayerState` has one constructor with both one and multiple elements because Fusion Message don't like it having multple constructor.
+- Hooking.OnSwitchAvatarPostfix cannot be used to detect Player Avatar change like in Single player because it's trigger a every players avatar changes.
 

@@ -8,9 +8,9 @@ namespace AvatarAnimator.FusionLab
     [Serializable]
     public class OtherPlayerState
     {
-        [JsonProperty("small_id")]
+        [JsonProperty("SmallId")]
         public byte m_smallId;
-        [JsonProperty("states")]
+        [JsonProperty("States")]
         public List<PlayerStateChange> m_States = new();
 
         public OtherPlayerState(byte smallId, PlayerStateChange change = null, List<PlayerStateChange> states = null)
@@ -29,8 +29,6 @@ namespace AvatarAnimator.FusionLab
         private readonly List<ScannedData> m_mirrorAnimators = new();
         private readonly Dictionary<int, PlayerStateChange> m_States = new();
         private readonly ScannedDataFusion m_player = null;
-
-        private List<ScannedData> Mirrors { get => m_mirrorAnimators; }
 
         public OtherPlayerAnimator(NetworkPlayer player, PlayerID playerId)
         {
@@ -64,21 +62,15 @@ namespace AvatarAnimator.FusionLab
 
         public void AddMirror(ScannedData data)
         {
-            Mirrors.Add(data);
+            m_mirrorAnimators.Add(data);
             foreach (var layer in m_States)
             {
                 var state = m_player.Animator.GetCurrentAnimatorStateInfo(layer.Value.m_Layer);
                 data.Animator.Play(layer.Value.m_State, layer.Value.m_Layer, state.normalizedTime);
             }
         }
-        public void RemoveMirror(ScannedData data)
-        {
-            Mirrors.Remove(data);
-        }
-        public void ClearMirrors()
-        {
-            Mirrors.Clear();
-        }
+        public void RemoveMirror(ScannedData data) { m_mirrorAnimators.Remove(data); }
+        public void ClearMirrors() { m_mirrorAnimators.Clear(); }
         public bool IsMe() => m_player.IsMe();
     }
 
@@ -88,7 +80,6 @@ namespace AvatarAnimator.FusionLab
         protected NetworkPlayer m_NetworkPlayer;
 
         public ScannedDataFusion() { }
-
         public static ScannedDataFusion Create(NetworkPlayer player, PlayerID id)
         {
             ScannedDataFusion data = new();
@@ -102,10 +93,6 @@ namespace AvatarAnimator.FusionLab
         }
 
         public bool IsMe() => m_PlayerId.IsMe;
-
-        protected override void SetAvatar()
-        {
-            m_Avatar = m_RigManager.avatar;
-        }
+        protected override void SetAvatar() { m_Avatar = m_RigManager.avatar; }
     }
 }

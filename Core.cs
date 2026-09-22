@@ -83,6 +83,7 @@ namespace AvatarAnimator
             Core.OnUpdateEvt += UpdateAvatarChangeLater;
             updateAvatarChangeLater = true;
         }
+
         private static void OnSwitchAvatarPostfix(Il2CppSLZ.VRMK.Avatar _) { UpdatePlayerAvatar(); }
         public static void SimplePlayerMonitoring()
         {

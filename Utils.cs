@@ -8,6 +8,7 @@ using static Il2CppSLZ.VRMK.Avatar;
 namespace AvatarAnimator
 {
     public delegate byte PlayerIdGetterFunc(RigManager rig);
+    public delegate bool FindFunc<in T>(T arg);
 
     public static class Utils
     {

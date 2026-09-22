@@ -1,9 +1,4 @@
-﻿using MelonLoader;
-using System.Reflection;
-using LabFusion.SDK.Modules;
-using LabFusion.Network;
-using LabFusion.Network.Serialization;
-using LabFusion.Extensions;
+﻿using LabFusion.SDK.Modules;
 using Il2CppSLZ.Marrow;
 using LabFusion.Utilities;
 using LabFusion.Player;
@@ -12,7 +7,6 @@ using BoneLib;
 
 namespace AvatarAnimator.FusionLab
 {
-    public delegate bool FindFunc<in T>(T arg);
     public class AvatarAnimatorFusionModule : LabFusion.SDK.Modules.Module
     {
         public override string Name => BuildInfo.Name;
@@ -37,10 +31,11 @@ namespace AvatarAnimator.FusionLab
                 throw new Exception($"Player RigManager with Avatar {rig.AvatarCrate.Barcode.ToString()} doesn't have a Player Id");
             };
 
+            ModuleMessageManager.RegisterHandler<PlayerStateChangeMessageModule>();
+
             MirrorScanner.OnNew += OnNew;
             MirrorScanner.OnRemoved += OnRemoved;
             MirrorScanner.OnClear += OnClear;
-            ModuleMessageManager.RegisterHandler<PlayerStateChangeMessageModule>();
             MultiplayerHooking.OnPlayerJoined += OnPlayerJoined;
             MultiplayerHooking.OnPlayerLeft += OnPlayerLeft;
             MultiplayerHooking.OnStartedServer += OnJoinedServer;
@@ -49,15 +44,10 @@ namespace AvatarAnimator.FusionLab
             PlayerAnimator.OnAvatarStateChanged += OnAvatarStateChanged;
             PlayerID.OnMetadataChangedEvent += OnPlayerMetadataChangedEvent;
             Hooking.OnLevelLoaded += OnLevelLoaded;
+            NetworkPlayer.OnNetworkRigCreated += OnNetworkRigCreated;
+            NetworkPlayer.OnNetworkPlayerRegistered += OnNetworkPlayerRegistered;
 
-            NetworkPlayer.OnNetworkRigCreated += (NetworkPlayer _1, RigManager _2) => { Logger.Dbg?.Debug("OnNetworkRigCreated"); };
-            NetworkPlayer.OnNetworkPlayerRegistered += (NetworkPlayer player) =>
-            {
-                Logger.Dbg?.Debug("OnNetworkPlayerRegistered");
-                playersConnecting.Add(player.PlayerID.SmallID, player);
-                if (1 == playersConnecting.Count) Core.OnUpdateEvt += PlayerConnecting;
-            };
-
+            // You cannot start the game in multiplayer
             CorePrivate.SimplePlayerMonitoring();
         }
 
@@ -66,6 +56,7 @@ namespace AvatarAnimator.FusionLab
             Logger.Msg("Module unregistered");
             players.Clear();
             PlayerStateChangeMessageModule.WaitingList.Clear();
+
             MirrorScanner.OnNew -= OnNew;
             MirrorScanner.OnRemoved -= OnRemoved;
             MirrorScanner.OnClear -= OnClear;
@@ -76,6 +67,8 @@ namespace AvatarAnimator.FusionLab
             PlayerAnimator.OnAvatarStateChanged -= OnAvatarStateChanged;
             PlayerID.OnMetadataChangedEvent -= OnPlayerMetadataChangedEvent;
             Hooking.OnLevelLoaded -= OnLevelLoaded;
+            NetworkPlayer.OnNetworkRigCreated -= OnNetworkRigCreated;
+            NetworkPlayer.OnNetworkPlayerRegistered -= OnNetworkPlayerRegistered;
         }
 
         public static void ChangeOtherPlayerState(OtherPlayerState states)
@@ -197,45 +190,15 @@ namespace AvatarAnimator.FusionLab
             }
             PlayerStateChangeMessageModule.WaitingList.Clear();
         }
-    }
-
-    public class PlayerStateChangeMessageModule : ModuleMessageHandler
-    {
-        private static readonly List<OtherPlayerState> m_waitingList = new();
-        public static List<OtherPlayerState> WaitingList { get => m_waitingList; }
-
-        public static void SendMessage(OtherPlayerState d)
+        private void OnNetworkRigCreated(NetworkPlayer _1, RigManager _2)
         {
-            var data = new MyNetSerializable() { m_data = OtherPlayerState.Serialize(d), };
-            Logger.Dbg?.Data($"Msg sent '{data.m_data}'");
-            MessageRelay.RelayModule<PlayerStateChangeMessageModule, MyNetSerializable>(data, new(RelayType.ToOtherClients, NetworkChannel.Reliable));
+            Logger.Dbg?.Debug("OnNetworkRigCreated");
         }
-        public static void SendMessageTo(byte smallId, OtherPlayerState d)
+        private void OnNetworkPlayerRegistered(NetworkPlayer player)
         {
-            var data = new MyNetSerializable() { m_data = OtherPlayerState.Serialize(d), };
-            Logger.Dbg?.Data($"Msg sent '{data.m_data}' to {smallId}");
-            MessageRelay.RelayModule<PlayerStateChangeMessageModule, MyNetSerializable>(data, new(smallId, NetworkChannel.Reliable));
+            Logger.Dbg?.Debug("OnNetworkPlayerRegistered");
+            playersConnecting.Add(player.PlayerID.SmallID, player);
+            if (1 == playersConnecting.Count) Core.OnUpdateEvt += PlayerConnecting;
         }
-        protected override void OnHandleMessage(ReceivedMessage received)
-        {
-            var data = received.ReadData<MyNetSerializable>();
-            var state_s = OtherPlayerState.Deserialize(data.m_data);
-            Logger.Dbg?.Data($"Msg received '{data.m_data}' from {state_s.m_smallId}");
-            if (PlayerAnimator.Id == state_s.m_smallId) return;
-            if (Core.IsLevelLoading)
-            {
-                Logger.Dbg?.Info($"Level didn't finish to load, store Message data");
-                m_waitingList.Add(state_s);
-                return;
-            }
-            AvatarAnimatorFusionModule.ChangeOtherPlayerState(state_s);
-        }
-    }
-
-    public class MyNetSerializable : INetSerializable
-    {
-        public int? GetSize() => m_data.GetSize();
-        public string m_data;
-        public void Serialize(INetSerializer serializer) { serializer.SerializeValue(ref m_data); }
     }
 }

@@ -6,11 +6,11 @@ namespace AvatarAnimator
     [Serializable]
     public class PlayerStateChange
     {
-        [JsonProperty("layer")]
+        [JsonProperty("Layer")]
         public int m_Layer;
-        [JsonProperty("state")]
+        [JsonProperty("State")]
         public string m_State;
-        [JsonProperty("time", NullValueHandling = NullValueHandling.Ignore)]
+        [JsonProperty("Time", NullValueHandling = NullValueHandling.Ignore)]
         public float? m_Time = null;
 
         public PlayerStateChange() { }
@@ -20,7 +20,7 @@ namespace AvatarAnimator
 
     public static class PlayerAnimator
     {
-        public class LayerAnimator
+        public class AnimatorLayer
         {
             public readonly int m_LayerIndex;
             public StateNode m_CurrentState = null;
@@ -29,16 +29,15 @@ namespace AvatarAnimator
             public DateTime? m_ConditionDelayTimer = null;
             public DateTime? m_ConditionDelayWaitEndClip = null;
 
-            public LayerAnimator(int layerIndex) { m_LayerIndex = layerIndex; }
+            public AnimatorLayer(int layerIndex) { m_LayerIndex = layerIndex; }
         }
 
         public static event Action<PlayerStateChange> OnAvatarStateChanged;
 
         private static readonly List<ScannedData> m_mirrorAnimators = new();
         private static readonly Dictionary<int, int> m_LayerIndexToIndex = new();
-        private static readonly List<LayerAnimator> m_Layers = new();
+        private static readonly List<AnimatorLayer> m_Layers = new();
         private static ScannedData m_player = null;
-
 
         /// <summary> Store values for level change </summary>
         private static readonly Dictionary<string, int> m_StoreValues = new();
@@ -227,7 +226,7 @@ namespace AvatarAnimator
             }
         }
 
-        private static bool IsConditionValid(LayerAnimator layer, TransitionCondition cond)
+        private static bool IsConditionValid(AnimatorLayer layer, TransitionCondition cond)
         {
             if (null == cond) return true;
             switch (cond.Type)
