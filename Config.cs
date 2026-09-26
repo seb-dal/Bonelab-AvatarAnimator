@@ -5,6 +5,8 @@ namespace AvatarAnimator
 {
     public static class Config
     {
+        private static readonly DelayTimeGate delay = new(20);
+        private static bool SaveLaterActif = false;
 
         private static MelonPreferences_Category cat;
         private static MelonPreferences_Entry<bool> debugLog;
@@ -20,28 +22,53 @@ namespace AvatarAnimator
         {
             cat = MelonPreferences.CreateCategory(BuildInfo.Name, "");
             debugLog = cat.CreateEntry("Debug_Logs", false);
+            Logger.DebugLogs = debugLog.Value;
             scanMirrorsInterval = cat.CreateEntry("Scan_Mirrors_Interval", 20, "Delay in frame between each Mirror scan", validator: new ValueRange<int>(1, 60));
             playerAnimatorUpdateInterval = cat.CreateEntry("Player_Animator_Update_Interval", 2, "Delay in frame between each Player animator update", validator: new ValueRange<int>(1, 4));
-            MelonPreferences.Save();
+            SavePreferences();
         }
 
         public static void SwitchDebugLog(bool on)
         {
             if (on == Logger.DebugLogs) return;
             Logger.DebugLogs = debugLog.Value = on;
-            MelonPreferences.Save();
+            SavePreferencesLater();
         }
         public static void ChangeScanMirrorsInterval(int interval)
         {
             if (interval == scanMirrorsInterval.Value) return;
             CorePrivate.UpdateScanner.Interval = scanMirrorsInterval.Value = interval;
-            MelonPreferences.Save();
+            SavePreferencesLater();
         }
         public static void ChangePlayerAnimatorUpdateInterval(int interval)
         {
             if (interval == playerAnimatorUpdateInterval.Value) return;
             CorePrivate.UpdateAnim.Interval = playerAnimatorUpdateInterval.Value = interval;
+            SavePreferencesLater();
+        }
+        public static void SavePreferences()
+        {
             MelonPreferences.Save();
+            if (SaveLaterActif)
+            {
+                SaveLaterActif = false;
+                MenuUi.SaveButtonState(SaveLaterActif);
+                Core.OnUpdateEvt -= DelayUpdate;
+            }
+        }
+
+        public static void SavePreferencesLater()
+        {
+            delay.Reset();
+            if (SaveLaterActif) return;
+            SaveLaterActif = true;
+            MenuUi.SaveButtonState(SaveLaterActif);
+            Core.OnUpdateEvt += DelayUpdate;
+        }
+        private static void DelayUpdate()
+        {
+            if (!delay.Now()) return;
+            SavePreferences();
         }
     }
 }

@@ -7,44 +7,44 @@ using UnityEngine;
 
 namespace AvatarAnimator
 {
-    public enum ScannedDataSources
+    public enum EntityDataSources
     {
         Invalid,
         Player,
         Mirror,
         OtherPlayer,
     }
-    public class ScannedData
+    public class EntityData
     {
         protected AvatarAnimatorDataContainer m_Cont;
         protected Il2CppSLZ.VRMK.Avatar m_Avatar;
         protected RigManager m_RigManager;
         protected Barcode m_Barcode;
-        protected ScannedDataSources m_Source;
+        protected EntityDataSources m_Source;
         protected Mirror m_Mirror = null;
         protected byte m_id;
 
-        public ScannedData() { }
-        public static ScannedData Create()
+        public EntityData() { }
+        public static EntityData Create()
         {
-            ScannedData data = new();
-            data.m_Source = ScannedDataSources.Player;
+            EntityData data = new();
+            data.m_Source = EntityDataSources.Player;
             data.m_RigManager = Player.RigManager;
             SetId(ref data);
             data.UpdateAvatar();
             return data;
         }
-        public static ScannedData Create(Mirror mirror)
+        public static EntityData Create(Mirror mirror)
         {
-            ScannedData data = new();
-            data.m_Source = ScannedDataSources.Mirror;
+            EntityData data = new();
+            data.m_Source = EntityDataSources.Mirror;
             data.m_Mirror = mirror;
             data.m_RigManager = mirror.rigManager;
             SetId(ref data);
             data.UpdateAvatar();
             return data;
         }
-        private static void SetId(ref ScannedData data)
+        private static void SetId(ref EntityData data)
         {
             try
             {
@@ -53,7 +53,7 @@ namespace AvatarAnimator
             catch (Exception e)
             {
                 Logger.Dbg?.Warn(e.ToString());
-                data.m_Source = ScannedDataSources.Invalid;
+                data.m_Source = EntityDataSources.Invalid;
             }
         }
 
@@ -64,10 +64,10 @@ namespace AvatarAnimator
         public Il2CppSLZ.VRMK.Avatar Avatar { get => m_Avatar; }
         public RigManager RigManager { get => m_RigManager; }
         public Barcode Barcode { get => m_Barcode; }
-        public ScannedDataSources Source { get => m_Source; }
+        public EntityDataSources Source { get => m_Source; }
         public Mirror Mirror { get => m_Mirror; }
         public byte Id { get => m_id; }
-        public bool IsValid { get => ScannedDataSources.Invalid != m_Source; }
+        public bool IsValid { get => EntityDataSources.Invalid != m_Source; }
 
 
         /// <summary> Set the m_Avatar from current data </summary>
@@ -75,8 +75,8 @@ namespace AvatarAnimator
         {
             m_Avatar = m_Source switch
             {
-                ScannedDataSources.Player => Player.Avatar,
-                ScannedDataSources.Mirror => m_Mirror.Reflection,
+                EntityDataSources.Player => Player.Avatar,
+                EntityDataSources.Mirror => m_Mirror.Reflection,
                 _ => null,
             };
         }
@@ -86,21 +86,21 @@ namespace AvatarAnimator
         {
             SetAvatar();
             m_Barcode = m_RigManager?.AvatarCrate?.Barcode;
-            if (ScannedDataSources.Invalid != m_Source)
+            if (EntityDataSources.Invalid != m_Source)
                 m_Cont = m_Avatar.gameObject.GetComponent<AvatarAnimatorDataContainer>();
             if (null != m_Cont)
             {
                 try
                 {
-                    m_Cont.m_Data = AvatarAnimatorDataDeserializer.Deserialize(m_Cont.m_Version, m_Cont.m_CompactedData);
+                    m_Cont.m_Data = AvatarAnimatorDataDeserializer.Deserialize(m_Cont.m_Version, m_Cont.m_SerializeData);
                     Logger.Msg($"AvatarAnimator '{Barcode.ToString()}' Data found version {m_Cont.m_Version}");
                 }
                 catch (Exception e)
                 {
-                    m_Source = ScannedDataSources.Invalid;
+                    m_Source = EntityDataSources.Invalid;
                     Logger.Warn(e.ToString());
                 }
-                Logger.Dbg?.Data(m_Cont.m_CompactedData);
+                Logger.Dbg?.Data(m_Cont.m_SerializeData);
             }
             Logger.Dbg?.Info($"id:'{m_id}', sc:{m_Source}, Rig:'{null != m_RigManager}', Avatar:'{null != m_Avatar}', Cont:'{null != m_Cont}', Anim:'{null != m_Cont?.m_Animator}'");
         }
@@ -109,11 +109,11 @@ namespace AvatarAnimator
     /// <summary> Scan GameObjects for Mirrors </summary>
     public static class MirrorScanner
     {
-        private static readonly List<ScannedData> m_all = new();
-        public static List<ScannedData> All { get => m_all; }
+        private static readonly List<EntityData> m_all = new();
+        public static List<EntityData> All { get => m_all; }
 
-        public static event Action<ScannedData> OnNew;
-        public static event Action<ScannedData> OnRemoved;
+        public static event Action<EntityData> OnNew;
+        public static event Action<EntityData> OnRemoved;
         public static event Action OnClear;
 
         public static void Clear()
@@ -142,7 +142,7 @@ namespace AvatarAnimator
             {
                 if (null == e || null == e?.rigManager || null == e?.Reflection) continue;
                 if (null != m_all.Find((e2) => Utils.RefEquals(e2.RigManager, e.rigManager))) continue;
-                ScannedData d = ScannedData.Create(e);
+                EntityData d = EntityData.Create(e);
                 m_all.Add(d);
                 OnNew?.Invoke(d);
                 add += 1;
@@ -155,22 +155,22 @@ namespace AvatarAnimator
 
     public static class PlayerScanner
     {
-        private static ScannedData PlayerData = null;
+        private static EntityData PlayerData = null;
         /// <summary> Avatar Change </summary>
-        public static event Action<ScannedData> OnAvatarChange;
+        public static event Action<EntityData> OnAvatarChange;
         /// <summary> Level Change </summary>
-        public static event Action<ScannedData> OnAvatarSame;
+        public static event Action<EntityData> OnAvatarSame;
 
         public static void GetAvatarAnimator()
         {
             Logger.Dbg?.Data($"OLD: {PlayerData?.Barcode?.ToString()} '{PlayerData?.Source}' '{null == PlayerData?.RigManager}'  -  NEW:{Player.RigManager.AvatarCrate.Barcode?.ToString()} '{Player.RigManager.AvatarCrate?.Crate?.Title}'");
             if ("PolyBlank" == Player.RigManager.AvatarCrate?.Crate?.Title) return;
 
-            bool wasInvalid = ScannedDataSources.Invalid == PlayerData?.Source;
+            bool wasInvalid = EntityDataSources.Invalid == PlayerData?.Source;
             bool hasAvatarChange = Player.RigManager.AvatarCrate.Barcode != PlayerData?.Barcode; // if false => level change => new Data needed
 
             if (!hasAvatarChange || null == PlayerData || wasInvalid)
-                PlayerData = ScannedData.Create();
+                PlayerData = EntityData.Create();
             else
                 PlayerData.UpdateAvatar();
 

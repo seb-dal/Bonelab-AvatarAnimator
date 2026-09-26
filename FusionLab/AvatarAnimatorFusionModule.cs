@@ -110,7 +110,7 @@ namespace AvatarAnimator.FusionLab
 
         ////
 
-        private void OnNew(ScannedData data)
+        private void OnNew(EntityData data)
         {
             if (!players.ContainsKey(data.Id)) return;
             var other = players[data.Id];
@@ -118,7 +118,7 @@ namespace AvatarAnimator.FusionLab
             Logger.Dbg?.Info($"Add Mirror to Other Player {data.Id}");
             other.AddMirror(data);
         }
-        private void OnRemoved(ScannedData data)
+        private void OnRemoved(EntityData data)
         {
             if (!players.ContainsKey(data.Id)) return;
             var other = players[data.Id];

@@ -48,10 +48,10 @@ namespace AvatarAnimator
 
         public static event Action<PlayerStateChange> OnAvatarStateChanged;
 
-        private static readonly List<ScannedData> m_mirrorAnimators = new();
+        private static readonly List<EntityData> m_mirrorAnimators = new();
         private static readonly Dictionary<int, int> m_LayerIndexToIndex = new();
         private static readonly List<AnimatorLayer> m_Layers = new();
-        private static ScannedData m_player = null;
+        private static EntityData m_player = null;
 
         /// <summary> Store values for level change </summary>
         private static readonly Dictionary<string, int> m_StoreValues = new();
@@ -65,7 +65,7 @@ namespace AvatarAnimator
             {
                 m_mirrorAnimators.Clear();
             };
-            PlayerScanner.OnAvatarChange += (ScannedData player) =>
+            PlayerScanner.OnAvatarChange += (EntityData player) =>
             {
                 Logger.Dbg?.Info("OnAvatarChange");
                 PlayerInput.Clear();
@@ -107,7 +107,7 @@ namespace AvatarAnimator
                 // Avatar change in front of a mirror
                 foreach (var mirror in m_mirrorAnimators) { mirror.UpdateAvatar(); }
             };
-            PlayerScanner.OnAvatarSame += (ScannedData player) =>
+            PlayerScanner.OnAvatarSame += (EntityData player) =>
             {
                 Logger.Dbg?.Info("OnAvatarSame");
                 m_player = player;
@@ -133,7 +133,7 @@ namespace AvatarAnimator
                 foreach (var layer in m_Layers) { PlayState(layer.m_LayerIndex, layer.m_CurrentStateName, false); }
             };
 
-            MirrorScanner.OnNew += (ScannedData data) =>
+            MirrorScanner.OnNew += (EntityData data) =>
             {
                 Logger.Dbg?.Info($"Data:({data.Barcode.ToString()} PlayerID:'{data.Id}') Player:({m_player.Barcode.ToString()} PlayerID:'{m_player.Id}')");
                 if (data.Barcode != m_player.Barcode) return;
@@ -148,12 +148,12 @@ namespace AvatarAnimator
                 }
             };
 
-            MirrorScanner.OnRemoved += (ScannedData data) =>
+            MirrorScanner.OnRemoved += (EntityData data) =>
             {
                 m_mirrorAnimators.Remove(data);
             };
 
-            Logger.Msg($"Avatar animator data current version {AvatarAnimatorDataContainer.m_CurrentVersion}");
+            Logger.Msg($"Avatar animator data current version {AvatarAnimatorDataContainer.m_CurrentApiVersion}");
         }
 
         public static void SetCurentState(int layer, string state, bool updateValues = true)

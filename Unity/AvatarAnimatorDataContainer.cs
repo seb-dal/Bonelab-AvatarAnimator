@@ -1,9 +1,9 @@
-using System;
-using System.Collections.Generic;
 using UnityEngine;
 using Newtonsoft.Json;
 
 #if UNITY_EDITOR
+using System;
+using System.Collections.Generic;
 using UnityEditor;
 #endif
 
@@ -12,25 +12,26 @@ namespace AvatarAnimator
     [Serializable]
     public class AvatarAnimatorDataContainer : MonoBehaviour
     {
-        public const string m_CurrentVersion = "1.0";
+        public const string m_CurrentApiVersion = "1.0";
         public Animator m_Animator;
         public AvatarAnimatorData m_Data;
         public string m_Version;
-        public string m_CompactedData;
+        public string m_SerializeData;
 
         public void PopulateData(Animator anim, AvatarAnimatorData data)
         {
             m_Animator = anim;
             m_Data = data;
+            m_Version = m_CurrentApiVersion;
 #if UNITY_EDITOR
             EditorUtility.SetDirty(this);
 #endif
         }
 
-        public void CompactData()
+        public void SerializeData()
         {
-            if (null == m_Data) throw new Exception("Cannot Compact null Data");
-            m_CompactedData = JsonConvert.SerializeObject(m_Data, Formatting.None);
+            if (null == m_Data) throw new Exception("Cannot Serialize null Data");
+            m_SerializeData = JsonConvert.SerializeObject(m_Data, Formatting.None);
 #if UNITY_EDITOR
             EditorUtility.SetDirty(this);
 #endif

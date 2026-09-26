@@ -10,6 +10,7 @@ namespace AvatarAnimator
         public const string Company = "";
         public const string Version = "1.0.0";
         public const string DownloadLink = "";
+        public const uint ConsoleColorARGB = 0xff008000;
     }
 
     public class Core : MelonMod
@@ -20,8 +21,8 @@ namespace AvatarAnimator
         public static event Action OnUpdateEvt;
 
         public event Action<PlayerStateChange> OnAvatarStateChanged;
-        public event Action<ScannedData> OnPlayerAvatarChange;
-        public event Action<ScannedData> OnPlayerAvatarSame;
+        public event Action<EntityData> OnPlayerAvatarChange;
+        public event Action<EntityData> OnPlayerAvatarSame;
         public void PlayState(int layerIndex, string state) => PlayerAnimator.PlayState(layerIndex, state);
 
         public override void OnInitializeMelon()

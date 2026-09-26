@@ -29,13 +29,13 @@ namespace AvatarAnimator.FusionLab
 
     public class OtherPlayerAnimator
     {
-        private readonly List<ScannedData> m_mirrorAnimators = new();
+        private readonly List<EntityData> m_mirrorAnimators = new();
         private readonly Dictionary<int, PlayerStateChange> m_States = new();
-        private readonly ScannedDataFusion m_player = null;
+        private readonly OtherPlayerData m_player = null;
 
         public OtherPlayerAnimator(NetworkPlayer player, PlayerID playerId)
         {
-            m_player = ScannedDataFusion.Create(player, playerId);
+            m_player = OtherPlayerData.Create(player, playerId);
             foreach (var layer in m_player.Data.ListLayer)
             {
                 m_States.Add(layer.LayerIndex, new(layer.LayerIndex, layer.StartState));
@@ -69,7 +69,7 @@ namespace AvatarAnimator.FusionLab
             foreach (var mirror in m_mirrorAnimators) mirror.UpdateAvatar();
         }
 
-        public void AddMirror(ScannedData data)
+        public void AddMirror(EntityData data)
         {
             m_mirrorAnimators.Add(data);
             foreach (var layer in m_States)
@@ -78,21 +78,21 @@ namespace AvatarAnimator.FusionLab
                 data.Animator.Play(layer.Value.m_State, layer.Value.m_Layer, state.normalizedTime);
             }
         }
-        public void RemoveMirror(ScannedData data) { m_mirrorAnimators.Remove(data); }
+        public void RemoveMirror(EntityData data) { m_mirrorAnimators.Remove(data); }
         public void ClearMirrors() { m_mirrorAnimators.Clear(); }
         public bool IsMe() => m_player.IsMe();
     }
 
-    public class ScannedDataFusion : ScannedData
+    public class OtherPlayerData : EntityData
     {
         protected PlayerID m_PlayerId;
         protected NetworkPlayer m_NetworkPlayer;
 
-        public ScannedDataFusion() { }
-        public static ScannedDataFusion Create(NetworkPlayer player, PlayerID id)
+        public OtherPlayerData() { }
+        public static OtherPlayerData Create(NetworkPlayer player, PlayerID id)
         {
-            ScannedDataFusion data = new();
-            data.m_Source = ScannedDataSources.OtherPlayer;
+            OtherPlayerData data = new();
+            data.m_Source = EntityDataSources.OtherPlayer;
             data.m_PlayerId = id;
             data.m_NetworkPlayer = player;
             data.m_RigManager = player.RigRefs.RigManager;
