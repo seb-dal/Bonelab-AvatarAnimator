@@ -13,25 +13,25 @@ namespace AvatarAnimator.FusionLab
             public void Serialize(INetSerializer serializer) { serializer.SerializeValue(ref m_data); }
         }
 
-        private static readonly List<OtherPlayerState> m_waitingList = new();
-        public static List<OtherPlayerState> WaitingList { get => m_waitingList; }
+        private static readonly List<OtherPlayerStates> m_waitingList = new();
+        public static List<OtherPlayerStates> WaitingList { get => m_waitingList; }
 
-        public static void SendMessage(OtherPlayerState d)
+        public static void SendMessage(OtherPlayerStates d)
         {
-            var data = new MyNetSerializable() { m_data = OtherPlayerState.Serialize(d), };
+            var data = new MyNetSerializable() { m_data = OtherPlayerStates.Serialize(d), };
             Logger.Dbg?.Data($"Msg sent '{data.m_data}'");
             MessageRelay.RelayModule<PlayerStateChangeMessageModule, MyNetSerializable>(data, new(RelayType.ToOtherClients, NetworkChannel.Reliable));
         }
-        public static void SendMessageTo(byte smallId, OtherPlayerState d)
+        public static void SendMessageTo(byte smallId, OtherPlayerStates d)
         {
-            var data = new MyNetSerializable() { m_data = OtherPlayerState.Serialize(d), };
+            var data = new MyNetSerializable() { m_data = OtherPlayerStates.Serialize(d), };
             Logger.Dbg?.Data($"Msg sent '{data.m_data}' to {smallId}");
             MessageRelay.RelayModule<PlayerStateChangeMessageModule, MyNetSerializable>(data, new(smallId, NetworkChannel.Reliable));
         }
         protected override void OnHandleMessage(ReceivedMessage received)
         {
             var data = received.ReadData<MyNetSerializable>();
-            var state_s = OtherPlayerState.Deserialize(data.m_data);
+            var state_s = OtherPlayerStates.Deserialize(data.m_data);
             Logger.Dbg?.Data($"Msg received '{data.m_data}' from {state_s.m_smallId}");
             if (PlayerAnimator.Id == state_s.m_smallId) return;
             if (Core.IsLevelLoading)

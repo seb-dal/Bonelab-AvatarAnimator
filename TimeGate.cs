@@ -8,7 +8,7 @@
     public class UpdateTimeGate : TimeGate
     {
         private readonly int m_init;
-        private readonly int m_interval;
+        private int m_interval;
         private int m_timer;
         public UpdateTimeGate(int interval, int startAt = 0)
         {
@@ -16,6 +16,7 @@
             m_interval = interval;
             Reset();
         }
+        public int Interval { get => m_interval; set => m_interval = value; }
 
         public override void Reset() { m_timer = m_init; }
 

@@ -1,4 +1,5 @@
-﻿using BoneLib;
+﻿using AvatarAnimator.Deserialize;
+using BoneLib;
 using Il2CppSLZ.Marrow;
 using Il2CppSLZ.Marrow.Warehouse;
 using Il2CppSLZ.VRMK;
@@ -89,8 +90,16 @@ namespace AvatarAnimator
                 m_Cont = m_Avatar.gameObject.GetComponent<AvatarAnimatorDataContainer>();
             if (null != m_Cont)
             {
-                m_Cont.UncompactData();
-                Logger.Msg($"AvatarAnimator '{Barcode.ToString()}' Data found");
+                try
+                {
+                    m_Cont.m_Data = AvatarAnimatorDataDeserializer.Deserialize(m_Cont.m_Version, m_Cont.m_CompactedData);
+                    Logger.Msg($"AvatarAnimator '{Barcode.ToString()}' Data found version {m_Cont.m_Version}");
+                }
+                catch (Exception e)
+                {
+                    m_Source = ScannedDataSources.Invalid;
+                    Logger.Warn(e.ToString());
+                }
                 Logger.Dbg?.Data(m_Cont.m_CompactedData);
             }
             Logger.Dbg?.Info($"id:'{m_id}', sc:{m_Source}, Rig:'{null != m_RigManager}', Avatar:'{null != m_Avatar}', Cont:'{null != m_Cont}', Anim:'{null != m_Cont?.m_Animator}'");

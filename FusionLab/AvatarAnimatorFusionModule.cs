@@ -71,7 +71,7 @@ namespace AvatarAnimator.FusionLab
             NetworkPlayer.OnNetworkPlayerRegistered -= OnNetworkPlayerRegistered;
         }
 
-        public static void ChangeOtherPlayerState(OtherPlayerState states)
+        public static void ChangeOtherPlayerState(OtherPlayerStates states)
         {
             if (!players.ContainsKey(states.m_smallId)) return;
             Logger.Dbg?.Info("Change other Player animator state");

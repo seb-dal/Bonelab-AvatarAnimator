@@ -10,12 +10,26 @@ namespace AvatarAnimator
         public int m_Layer;
         [JsonProperty("State")]
         public string m_State;
-        [JsonProperty("Time", NullValueHandling = NullValueHandling.Ignore)]
-        public float? m_Time = null;
+
+        [JsonProperty("nTime", NullValueHandling = NullValueHandling.Ignore)]
+        public float? m_nTime = null;
+        // In sec
+        [JsonProperty("Duration", NullValueHandling = NullValueHandling.Ignore)]
+        public float? m_Duration = null;
+        [JsonProperty("Speed", NullValueHandling = NullValueHandling.Ignore)]
+        public float? m_Speed = null;
 
         public PlayerStateChange() { }
         public PlayerStateChange(int layer, string state) { m_Layer = layer; m_State = state; }
-        public PlayerStateChange(int layer, string state, float time) : this(layer, state) { m_Time = time; }
+        public PlayerStateChange(int layer, string state, float len, float speed)
+        {
+            m_Layer = layer; m_State = state;
+            m_Duration = len; m_Speed = speed;
+        }
+        public PlayerStateChange(int layer, string state, float len, float speed, float nTime) : this(layer, state, len, speed)
+        {
+            m_nTime = nTime;
+        }
     }
 
     public static class PlayerAnimator
@@ -138,6 +152,8 @@ namespace AvatarAnimator
             {
                 m_mirrorAnimators.Remove(data);
             };
+
+            Logger.Msg($"Avatar animator data current version {AvatarAnimatorDataContainer.m_CurrentVersion}");
         }
 
         public static void SetCurentState(int layer, string state, bool updateValues = true)
@@ -151,7 +167,7 @@ namespace AvatarAnimator
             foreach (var anim in m_mirrorAnimators) anim.Animator.Play(state, layer);
             Logger.Msg($"Player: {m_player.Barcode.ToString()} Current state change to '{state}'");
             Logger.Dbg?.Data(JsonConvert.SerializeObject(layerObj.m_CurrentState, Formatting.None));
-            OnAvatarStateChanged?.Invoke(new(layer, state));
+            OnAvatarStateChanged?.Invoke(new(layer, state, layerObj.m_CurrentState.ClipDuration, layerObj.m_CurrentState.Speed));
 
             if (!updateValues) return;
             // Only update values if they will be used
@@ -283,13 +299,15 @@ namespace AvatarAnimator
             return true;
         }
 
+        /// <summary> Get all Player states to be send </summary>
+        /// <returns> List of all player states </returns>
         public static List<PlayerStateChange> GetPlayerStates()
         {
             List<PlayerStateChange> states = new();
             foreach (var state in m_Layers)
             {
                 var st = m_player.Animator.GetCurrentAnimatorStateInfo(state.m_LayerIndex);
-                states.Add(new(state.m_LayerIndex, state.m_CurrentStateName, st.m_NormalizedTime));
+                states.Add(new(state.m_LayerIndex, state.m_CurrentStateName, st.length, st.m_Speed, st.m_NormalizedTime));
             }
             return states;
         }

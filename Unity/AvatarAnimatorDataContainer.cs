@@ -12,8 +12,10 @@ namespace AvatarAnimator
     [Serializable]
     public class AvatarAnimatorDataContainer : MonoBehaviour
     {
+        public const string m_CurrentVersion = "1.0";
         public Animator m_Animator;
         public AvatarAnimatorData m_Data;
+        public string m_Version;
         public string m_CompactedData;
 
         public void PopulateData(Animator anim, AvatarAnimatorData data)
@@ -32,11 +34,6 @@ namespace AvatarAnimator
 #if UNITY_EDITOR
             EditorUtility.SetDirty(this);
 #endif
-        }
-        public void UncompactData()
-        {
-            if (null == m_CompactedData) throw new Exception("Cannot Uncompact null CompactedData");
-            m_Data = JsonConvert.DeserializeObject<AvatarAnimatorData>(m_CompactedData);
         }
     }
 }
@@ -146,7 +143,6 @@ namespace AvatarAnimator
     {
         public List<LayerData> ListLayer;
         public Dictionary<string, TransitionConditionData> TransitionsData;
-        public string Version;
         public string Date;
     }
 }

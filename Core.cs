@@ -15,12 +15,9 @@ namespace AvatarAnimator
     public class Core : MelonMod
     {
         private static bool enabled = false;
-
-        private static TimeGate updateScanner;
-        private static TimeGate updateAnim;
-        public static event Action OnUpdateEvt;
-
         public static bool IsLevelLoading { get => !enabled; }
+
+        public static event Action OnUpdateEvt;
 
         public event Action<PlayerStateChange> OnAvatarStateChanged;
         public event Action<ScannedData> OnPlayerAvatarChange;
@@ -30,8 +27,7 @@ namespace AvatarAnimator
         public override void OnInitializeMelon()
         {
             Config.Initialize();
-            updateScanner = new UpdateTimeGate(Config.ScanMirrorsInterval);
-            updateAnim = new UpdateTimeGate(2);
+            CorePrivate.Initalize();
             Logger.Initialize(LoggerInstance);
             MenuUi.Initialize();
             PlayerAnimator.Initialize();
@@ -45,7 +41,7 @@ namespace AvatarAnimator
             Hooking.OnLevelLoaded += (LevelInfo _) =>
             {
                 enabled = true;
-                updateScanner.Reset();
+                CorePrivate.UpdateScanner.Reset();
             };
             FusionLabLoader.Initialise();
 
@@ -60,17 +56,27 @@ namespace AvatarAnimator
             if (!enabled) return;
             LocalInput.Update();
             OnUpdateEvt?.Invoke();
-            if (updateScanner.Now()) MirrorScanner.Scan();
-            if (updateAnim.Now()) PlayerAnimator.Update();
+            if (CorePrivate.UpdateScanner.Now()) MirrorScanner.Scan();
+            if (CorePrivate.UpdateAnim.Now()) PlayerAnimator.Update();
         }
     }
 
     // Keep "public functions" public but remove from Core External API
     public class CorePrivate
     {
+        private static UpdateTimeGate updateScanner;
+        private static UpdateTimeGate updateAnim;
         private static bool switchAvatarHooked = false;
         private static bool updateAvatarChangeLater = false;
 
+        public static UpdateTimeGate UpdateScanner { get => updateScanner; }
+        public static UpdateTimeGate UpdateAnim { get => updateAnim; }
+
+        public static void Initalize()
+        {
+            updateScanner = new UpdateTimeGate(Config.ScanMirrorsInterval);
+            updateAnim = new UpdateTimeGate(Config.PlayerAnimatorUpdateInterval);
+        }
         private static void UpdateAvatarChangeLater()
         {
             PlayerScanner.GetAvatarAnimator();

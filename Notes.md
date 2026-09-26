@@ -15,4 +15,4 @@ And `Logger.DbgInfo($"____")` with the "if(...)" inside the function mean that t
 
 - `OtherPlayerState` has one constructor with both one and multiple elements because Fusion Message don't like it having multple constructor.
 - Hooking.OnSwitchAvatarPostfix cannot be used to detect Player Avatar change like in Single player because it's trigger a every players avatar changes.
-
+- Animator Normalize time: float (X.Y) with X the number of loop done and Y the percentage of the state (https://docs.unity3d.com/6000.6/Documentation/ScriptReference/AnimatorStateInfo-normalizedTime.html)
