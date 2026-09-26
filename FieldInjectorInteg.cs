@@ -2,7 +2,7 @@
 
 namespace AvatarAnimator
 {
-    public class FieldInjectorInteg
+    public static class FieldInjectorInteg
     {
         public static void InjectFields()
         {

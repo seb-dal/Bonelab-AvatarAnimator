@@ -3,12 +3,14 @@ using BoneLib;
 using Il2CppSLZ.Marrow;
 using Il2CppSLZ.Marrow.Warehouse;
 using UnityEngine;
+using static Il2CppSLZ.VRMK.Avatar;
 
 namespace AvatarAnimator
 {
     public delegate byte PlayerIdGetterFunc(RigManager rig);
+    public delegate bool FindFunc<in T>(T arg);
 
-    public class Utils
+    public static class Utils
     {
         private static readonly System.Random rnd = new();
         public static bool Is(ConditionMode? ope, float value, float threshold = 0)
@@ -49,7 +51,7 @@ namespace AvatarAnimator
         public static PlayerIdGetterFunc GetPlayerId = (RigManager _) => 0;
     }
 
-    public class Debug
+    public static class Debug
     {
         public static void GetAvatarMetadata(Il2CppSLZ.VRMK.Avatar avatar)
         {
@@ -78,14 +80,14 @@ namespace AvatarAnimator
             for (int i = 0; i < trans.childCount; i++)
             {
                 Transform child = trans.GetChild(i);
-                Logger.Dbg?.Debug($"Enfant IL2CPP : {child.name}");
+                Logger.Dbg?.Debug($"Child IL2CPP : {child.name}");
             }
             foreach (var comp in target.GetComponents<Component>())
             {
                 if (comp != null)
                 {
                     var nativeType = comp.GetIl2CppType();
-                    Logger.Dbg?.Debug($" Composant IL2CPP : {nativeType.FullName}");
+                    Logger.Dbg?.Debug($" Component IL2CPP : {nativeType.FullName}");
                 }
             }
 
@@ -94,9 +96,15 @@ namespace AvatarAnimator
                 if (comp != null)
                 {
                     var nativeType = comp.GetIl2CppType();
-                    Logger.Dbg?.Debug($" Parent Composant IL2CPP : {nativeType.FullName}");
+                    Logger.Dbg?.Debug($" Parent Component IL2CPP : {nativeType.FullName}");
                 }
             }
         }
+
+        public static string ToString(HandSchematic hand)
+        {
+            return $"{hand.thumb1} ({hand.thumb2} {hand.thumb3})  {hand.index1} ({hand.index2} {hand.index3})   {hand.middle1} ({hand.middle2} {hand.middle3})   {hand.ring1} ({hand.ring2} {hand.ring3})   {hand.pinky1} ({hand.pinky2} {hand.pinky3})";
+        }
     }
 }
+

@@ -10,15 +10,17 @@ namespace AvatarAnimator
             public void Log(string msg) { m_Logger.Msg(msg); }
 
             /// <summary> For class Debug functions </summary>
-            public void Debug(string msg) { Log(ConsoleColor.Green, msg); }
+            public void Debug(string msg) { Log(ConsoleColor.Green, "[Dbg-Debug] " + msg); }
             /// <summary> Generaly for raw data </summary>
-            public void Data(string msg) { Log(ConsoleColor.Magenta, msg); }
+            public void Data(string msg) { Log(ConsoleColor.Magenta, "[Dbg-Data] " + msg); }
             /// <summary> For Logging Data </summary>
-            public void Info(string msg) { Log(ConsoleColor.Cyan, msg); }
+            public void Info(string msg) { Log(ConsoleColor.Cyan, "[Dbg-Info] " + msg); }
             /// <summary> For Coding temporary logs that need to be more visible that other logs </summary>
-            public void Highlight(string msg) { Log(ConsoleColor.DarkRed, msg); }
+            public void Highlight(string msg) { Log(ConsoleColor.DarkRed, "[Dbg-High] " + msg); }
             /// <summary> For when you need to know how you manage to get here (i mean in the code) </summary>
             public void StackTrace() { Log(ConsoleColor.DarkRed, (new System.Diagnostics.StackTrace()).ToString()); }
+            public void Warn(string msg) { Log(ConsoleColor.Yellow, "[Dbg-W] " + msg); }
+            public void Err(string msg) { Log(ConsoleColor.Red, "[Dbg-E] " + msg); }
         }
 
         private static MelonLogger.Instance m_Logger;
@@ -37,14 +39,9 @@ namespace AvatarAnimator
 
         public static void Initialize(MelonLogger.Instance logger) { m_Logger = logger; }
 
-        /// <summary> 
-        /// Use Dbg nullable to add/remove without cost of computation of string debug Logs.
-        /// Same as "if(Logger.DebugLogs) Logger.DbgInfo($"____")" but more compact and uniform.
-        /// Better that "Logger.DbgInfo(() => $"_____")" lambda capture is costly. 
-        /// </summary>
         public static DebugLogger Dbg { get => m_Dbg; }
         public static void Msg(string msg) { m_Logger.Msg(msg); }
-        public static void Warn(string msg) { m_Logger.Warning(msg); }
-        public static void Err(string msg) { m_Logger.Error(msg); }
+        public static void Warn(string msg) { m_Logger.Warning("[W] " + msg); }
+        public static void Err(string msg) { m_Logger.Error("[E] " + msg); }
     }
 }

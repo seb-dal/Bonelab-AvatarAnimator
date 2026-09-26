@@ -15,12 +15,9 @@ namespace AvatarAnimator
     public class Core : MelonMod
     {
         private static bool enabled = false;
-        private static bool updateAvatarChangeLater = false;
-
-        private static TimeGate updateScanner;
-        private static TimeGate updateAnim;
-
         public static bool IsLevelLoading { get => !enabled; }
+
+        public static event Action OnUpdateEvt;
 
         public event Action<PlayerStateChange> OnAvatarStateChanged;
         public event Action<ScannedData> OnPlayerAvatarChange;
@@ -30,49 +27,84 @@ namespace AvatarAnimator
         public override void OnInitializeMelon()
         {
             Config.Initialize();
-            updateScanner = new UpdateTimeGate(Config.ScanMirrorsInterval);
-            updateAnim = new UpdateTimeGate(Config.PlayerAnimatorUpdateInterval);
+            CorePrivate.Initalize();
             Logger.Initialize(LoggerInstance);
             MenuUi.Initialize();
             PlayerAnimator.Initialize();
             FieldInjectorInteg.InjectFields();
-            // Barcode and RigManager are not yet updated here
-            Hooking.OnSwitchAvatarPostfix += (Il2CppSLZ.VRMK.Avatar avatar) =>
-            {
-                updateAvatarChangeLater = true;
-            };
             Hooking.OnLevelUnloaded += () =>
             {
                 enabled = false;
-                Scanner.Clear();
+                MirrorScanner.Clear();
             };
-            Hooking.OnLevelLoading += (LevelInfo _) =>
-            {
-                enabled = false;
-            };
+            Hooking.OnLevelLoading += (LevelInfo _) => { enabled = false; };
             Hooking.OnLevelLoaded += (LevelInfo _) =>
             {
                 enabled = true;
-                updateScanner.Reset();
+                CorePrivate.UpdateScanner.Reset();
             };
             FusionLabLoader.Initialise();
 
+            // Other mods hook
             PlayerAnimator.OnAvatarStateChanged += OnAvatarStateChanged;
-            Scanner.OnPlayerAvatarChange += OnPlayerAvatarChange;
-            Scanner.OnPlayerAvatarSame += OnPlayerAvatarSame;
+            PlayerScanner.OnAvatarChange += OnPlayerAvatarChange;
+            PlayerScanner.OnAvatarSame += OnPlayerAvatarSame;
         }
 
         public override void OnUpdate()
         {
             if (!enabled) return;
             LocalInput.Update();
-            if (updateAvatarChangeLater)
-            {
-                updateAvatarChangeLater = false;
-                Scanner.GetPlayerAvatarAnimator();
-            }
-            if (updateScanner.Now()) Scanner.ScanForAvatarAnimator();
-            if (updateAnim.Now()) PlayerAnimator.Update();
+            OnUpdateEvt?.Invoke();
+            if (CorePrivate.UpdateScanner.Now()) MirrorScanner.Scan();
+            if (CorePrivate.UpdateAnim.Now()) PlayerAnimator.Update();
+        }
+    }
+
+    // Keep "public functions" public but remove from Core External API
+    public class CorePrivate
+    {
+        private static UpdateTimeGate updateScanner;
+        private static UpdateTimeGate updateAnim;
+        private static bool switchAvatarHooked = false;
+        private static bool updateAvatarChangeLater = false;
+
+        public static UpdateTimeGate UpdateScanner { get => updateScanner; }
+        public static UpdateTimeGate UpdateAnim { get => updateAnim; }
+
+        public static void Initalize()
+        {
+            updateScanner = new UpdateTimeGate(Config.ScanMirrorsInterval);
+            updateAnim = new UpdateTimeGate(Config.PlayerAnimatorUpdateInterval);
+        }
+        private static void UpdateAvatarChangeLater()
+        {
+            PlayerScanner.GetAvatarAnimator();
+            Core.OnUpdateEvt -= UpdateAvatarChangeLater;
+            updateAvatarChangeLater = false;
+        }
+        public static void UpdatePlayerAvatar()
+        {
+            if (updateAvatarChangeLater) return;
+            Core.OnUpdateEvt += UpdateAvatarChangeLater;
+            updateAvatarChangeLater = true;
+        }
+
+        private static void OnSwitchAvatarPostfix(Il2CppSLZ.VRMK.Avatar _) { UpdatePlayerAvatar(); }
+        public static void SimplePlayerMonitoring()
+        {
+            if (switchAvatarHooked) return;
+            Logger.Dbg?.Info("Simple PlayerMonitoring");
+            Hooking.OnSwitchAvatarPostfix += OnSwitchAvatarPostfix;
+            switchAvatarHooked = true;
+        }
+        public static void MultiPlayerMonitoring()
+        {
+            if (!switchAvatarHooked) return;
+            Logger.Dbg?.Info("Multiplayer PlayerMonitoring");
+            Hooking.OnSwitchAvatarPostfix -= OnSwitchAvatarPostfix;
+            switchAvatarHooked = false;
         }
     }
 }
+
