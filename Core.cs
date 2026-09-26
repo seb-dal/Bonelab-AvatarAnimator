@@ -10,6 +10,7 @@ namespace AvatarAnimator
         public const string Company = "";
         public const string Version = "1.0.0";
         public const string DownloadLink = "";
+        public const uint ConsoleColorARGB = 0xff008000;
     }
 
     public class Core : MelonMod
