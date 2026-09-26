@@ -16,19 +16,22 @@ namespace AvatarAnimator
             m_modPage = Page.Root.CreatePage(BuildInfo.Name, Color.cyan, 0, true);
 
             m_AvatarStatePage = m_modPage.CreatePage("Play Avatar state", Color.green);
-            m_ConfigPage = m_modPage.CreatePage("Configs", Color.white);
+            PlayerScanner.OnAvatarChange += MenuUi.OnAvatarChanged;
+            InitializeConfigPage();
+        }
 
+        private static void InitializeConfigPage()
+        {
+            m_ConfigPage = m_modPage.CreatePage("Configs", Color.white);
             m_ConfigPage.CreateBool("Debug logs", Color.white, Logger.DebugLogs, (bool on) => Config.SwitchDebugLog(on));
             var smiRange = Config.ScanMirrorsIntervalRange;
             m_ConfigPage.CreateInt("Scan Mirror Interval", Color.white, Config.ScanMirrorsInterval, 1, smiRange.MinValue, smiRange.MaxValue, (int interval) => Config.ChangeScanMirrorsInterval(interval));
             var pauiRange = Config.PlayerAnimatorUpdateIntervalRange;
-            m_ConfigPage.CreateInt("Player animator update Interval", Color.white, Config.PlayerAnimatorUpdateInterval, 1, pauiRange.MinValue, pauiRange.MaxValue, (int interval) => Config.ChangeScanMirrorsInterval(interval));
+            m_ConfigPage.CreateInt("Player animator update Interval", Color.white, Config.PlayerAnimatorUpdateInterval, 1, pauiRange.MinValue, pauiRange.MaxValue, (int interval) => Config.ChangePlayerAnimatorUpdateInterval(interval));
 
-            PlayerScanner.OnAvatarChange += MenuUi.OnAvatarChanged;
         }
 
-
-        public static void OnAvatarChanged(ScannedData player)
+        public static void OnAvatarChanged(EntityData player)
         {
             var removed = ListAction.Count;
             foreach (var elem in ListAction) { m_AvatarStatePage.Remove(elem); }
