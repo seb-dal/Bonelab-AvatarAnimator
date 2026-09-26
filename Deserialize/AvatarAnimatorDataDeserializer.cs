@@ -9,7 +9,7 @@ namespace AvatarAnimator.Deserialize
             if (null == data || "" == data) throw new Exception("Cannot Deserialize null or empty data");
             return version switch
             {
-                AvatarAnimatorDataContainer.m_CurrentVersion => JsonConvert.DeserializeObject<AvatarAnimatorData>(data),
+                AvatarAnimatorDataContainer.m_CurrentApiVersion => JsonConvert.DeserializeObject<AvatarAnimatorData>(data),
                 _ => throw new Exception($"Unsuported Data version '{version}'"),
             };
         }

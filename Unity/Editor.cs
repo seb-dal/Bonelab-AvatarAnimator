@@ -1,8 +1,8 @@
+#if UNITY_EDITOR
+
 using System;
 using System.Collections.Generic;
 using UnityEngine;
-
-#if UNITY_EDITOR
 using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEditor.Animations;
@@ -28,7 +28,7 @@ namespace AvatarAnimator
             if (!PrefabUtility.IsPartOfPrefabAsset(container.gameObject))
             {
                 anim = (Animator)EditorGUILayout.ObjectField(anim, typeof(Animator), true);
-                GUILayout.Label("" == container.m_Data.Version ? $"No data found" : $"Data found, version:'{container.m_Data.Version}' generated:'{container.m_Data.Date}'");
+                GUILayout.Label("" == container.m_Version ? $"No data found" : $"Data found, version:'{container.m_Version}' generated:'{container.m_Data.Date}'");
                 GUI.enabled = null != anim;
                 GUILayout.BeginHorizontal();
                 if (GUILayout.Button("How To Use"))
@@ -40,7 +40,7 @@ namespace AvatarAnimator
                 {
                     Logger.Reset();
                     container.m_Data = null;
-                    container.m_CompactedData = null;
+                    container.m_SerializeData = null;
                     try
                     {
                         container.PopulateData(anim, CollectData());
@@ -54,11 +54,11 @@ namespace AvatarAnimator
                         Logger.Reset();
                         Logger.Msg(JsonConvert.SerializeObject(container.m_Data, Formatting.Indented));
                     }
-                    if (GUILayout.Button("Compact Data"))
+                    if (GUILayout.Button("Serialize Data"))
                     {
                         Logger.Reset();
-                        container.CompactData();
-                        Logger.MsgInfo("Data has been compacted");
+                        container.SerializeData();
+                        Logger.MsgInfo("Data has been serialized");
                     }
                 }
                 GUILayout.EndHorizontal();
@@ -86,13 +86,10 @@ namespace AvatarAnimator
         private static readonly string isWaitEndClip = "WaitEndClip";
         private static readonly Regex isCyclic = new(@"Cyclic\((\d+)\)", RegexOptions.IgnoreCase);
 
-        private static readonly string version = "1.0";
-
         private AvatarAnimatorData CollectData()
         {
             AvatarAnimatorData data = new()
             {
-                Version = version,
                 Date = DateTime.Now.ToString(),
                 TransitionsData = new(),
                 ListLayer = new(),
