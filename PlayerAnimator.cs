@@ -19,15 +19,15 @@ namespace AvatarAnimator
         [JsonProperty("Speed", NullValueHandling = NullValueHandling.Ignore)]
         public float? m_Speed = null;
 
+        [JsonProperty("Now")]
+        public DateTime now;
+
         public PlayerStateChange() { }
-        public PlayerStateChange(int layer, string state) { m_Layer = layer; m_State = state; }
-        public PlayerStateChange(int layer, string state, float len, float speed)
+        public PlayerStateChange(int layer, string state, float len, float speed, float? nTime = null)
         {
             m_Layer = layer; m_State = state;
             m_Duration = len; m_Speed = speed;
-        }
-        public PlayerStateChange(int layer, string state, float len, float speed, float nTime) : this(layer, state, len, speed)
-        {
+            now = DateTime.Now;
             m_nTime = nTime;
         }
     }
@@ -42,6 +42,8 @@ namespace AvatarAnimator
             public DateTime? m_Transition = null;
             public DateTime? m_ConditionDelayTimer = null;
             public DateTime? m_ConditionDelayWaitEndClip = null;
+
+            public DateTime? m_startAt;
 
             public AnimatorLayer(int layerIndex) { m_LayerIndex = layerIndex; }
         }
@@ -94,6 +96,8 @@ namespace AvatarAnimator
                         default: break;
                     }
                 }
+                // Avatar change in front of a mirror
+                foreach (var mirror in m_mirrorAnimators) { mirror.UpdateAvatar(); }
                 if (!IsValid) return;
                 // Initialise and get layers/states values 
                 int i = 0;
@@ -101,11 +105,9 @@ namespace AvatarAnimator
                 {
                     m_Layers.Add(new(layer.LayerIndex));
                     m_LayerIndexToIndex.Add(layer.LayerIndex, i);
-                    SetCurentState(layer.LayerIndex, layer.StartState);
+                    PlayState(layer.LayerIndex, layer.StartState, playState: false);
                     i += 1;
                 }
-                // Avatar change in front of a mirror
-                foreach (var mirror in m_mirrorAnimators) { mirror.UpdateAvatar(); }
             };
             PlayerScanner.OnAvatarSame += (EntityData player) =>
             {
@@ -116,6 +118,7 @@ namespace AvatarAnimator
                     Logger.Dbg?.Info("PlayerAvatarSame: Current Animator doesn't have data");
                     return;
                 }
+
                 if (!IsValid) return;
                 // Restore Values
                 foreach (var trans in m_player.Data.TransitionsData)
@@ -130,7 +133,10 @@ namespace AvatarAnimator
                     }
                 }
                 // Set back the Player state before level change
-                foreach (var layer in m_Layers) { PlayState(layer.m_LayerIndex, layer.m_CurrentStateName, false); }
+                foreach (var layer in m_Layers)
+                {
+                    PlayState(layer.m_LayerIndex, layer.m_CurrentStateName, time: layer.m_startAt, updateValues: false);
+                }
             };
 
             MirrorScanner.OnNew += (EntityData data) =>
@@ -140,6 +146,8 @@ namespace AvatarAnimator
                 if (data.Id != m_player.Id) return;
                 Logger.Dbg?.Info($"Add Mirror to Player");
                 m_mirrorAnimators.Add(data);
+
+                if (!IsValid) return;
                 // Set the Mirror entity States
                 foreach (var layer in m_Layers)
                 {
@@ -156,18 +164,25 @@ namespace AvatarAnimator
             Logger.Msg($"Avatar animator data current version {AvatarAnimatorDataContainer.m_CurrentApiVersion}");
         }
 
-        public static void SetCurentState(int layer, string state, bool updateValues = true)
+        public static void PlayState(int layer, string state, DateTime? time = null, bool updateValues = true, bool playState = true)
         {
             if (!IsValid) return;
             if (!m_LayerIndexToIndex.ContainsKey(layer)) return;
+
+            var ttime = time ?? DateTime.Now;
             int indexLayer = m_LayerIndexToIndex[layer];
             var layerObj = m_Layers[indexLayer];
+            layerObj.m_startAt = time ?? DateTime.Now;
             layerObj.m_CurrentStateName = state;
             layerObj.m_CurrentState = m_player.Data.ListLayer[indexLayer].States[state];
-            foreach (var anim in m_mirrorAnimators) anim.Animator.Play(state, layer);
             Logger.Msg($"Player: {m_player.Barcode.ToString()} Current state change to '{state}'");
             Logger.Dbg?.Data(JsonConvert.SerializeObject(layerObj.m_CurrentState, Formatting.None));
-            OnAvatarStateChanged?.Invoke(new(layer, state, layerObj.m_CurrentState.ClipDuration, layerObj.m_CurrentState.Speed));
+
+            var currState = layerObj.m_CurrentState;
+            var nTime = Utils.ComputNTime(DateTime.Now, ttime, 0, currState.ClipDuration, currState.Speed);
+            if (playState) m_player.Animator.Play(state, layer, nTime);
+            foreach (var anim in m_mirrorAnimators) anim.Animator.Play(state, layer, nTime);
+            OnAvatarStateChanged?.Invoke(new(layer, state, layerObj.m_CurrentState.ClipDuration, layerObj.m_CurrentState.Speed, nTime));
 
             if (!updateValues) return;
             // Only update values if they will be used
@@ -201,13 +216,6 @@ namespace AvatarAnimator
             }
         }
 
-        public static void PlayState(int layer, string state, bool updateValues = true)
-        {
-            if (!IsValid) return;
-            m_player.Animator.Play(state, layer);
-            SetCurentState(layer, state, updateValues);
-        }
-
         public static void Update()
         {
             if (!IsValid) return;
@@ -235,7 +243,7 @@ namespace AvatarAnimator
                     if (validate || trans.HasExitTime)
                     {
                         layer.m_Transition = Utils.DateTimeNowPlusSecs(trans.HasExitTime ? trans.ExitTime : trans.Duration);
-                        SetCurentState(layer.m_LayerIndex, trans.NextState);
+                        PlayState(layer.m_LayerIndex, trans.NextState, playState: false); // already playing by fulfilling all conditions
                         break;
                     }
                 }
@@ -304,6 +312,7 @@ namespace AvatarAnimator
         public static List<PlayerStateChange> GetPlayerStates()
         {
             List<PlayerStateChange> states = new();
+            if (!IsValid) return states;
             foreach (var state in m_Layers)
             {
                 var st = m_player.Animator.GetCurrentAnimatorStateInfo(state.m_LayerIndex);

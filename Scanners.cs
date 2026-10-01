@@ -2,7 +2,6 @@
 using BoneLib;
 using Il2CppSLZ.Marrow;
 using Il2CppSLZ.Marrow.Warehouse;
-using Il2CppSLZ.VRMK;
 using UnityEngine;
 
 namespace AvatarAnimator
@@ -67,9 +66,11 @@ namespace AvatarAnimator
         public EntityDataSources Source { get => m_Source; }
         public Mirror Mirror { get => m_Mirror; }
         public byte Id { get => m_id; }
-        public bool IsValid { get => EntityDataSources.Invalid != m_Source; }
 
+        private bool valid = false;
+        public bool IsValid { get => valid; }
 
+        public void MakeInvalid() { valid = false; }
         /// <summary> Set the m_Avatar from current data </summary>
         protected virtual void SetAvatar()
         {
@@ -77,7 +78,7 @@ namespace AvatarAnimator
             {
                 EntityDataSources.Player => Player.Avatar,
                 EntityDataSources.Mirror => m_Mirror.Reflection,
-                _ => null,
+                _ => m_RigManager.avatar,
             };
         }
 
@@ -95,14 +96,17 @@ namespace AvatarAnimator
                     m_Cont.m_Data = AvatarAnimatorDataDeserializer.Deserialize(m_Cont.m_Version, m_Cont.m_SerializeData);
                     Logger.Msg($"AvatarAnimator '{Barcode.ToString()}' Data found version {m_Cont.m_Version}");
                 }
-                catch (Exception e)
-                {
-                    m_Source = EntityDataSources.Invalid;
-                    Logger.Warn(e.ToString());
-                }
+                catch (Exception e) { Logger.Warn(e.ToString()); }
                 Logger.Dbg?.Data(m_Cont.m_SerializeData);
             }
-            Logger.Dbg?.Info($"id:'{m_id}', sc:{m_Source}, Rig:'{null != m_RigManager}', Avatar:'{null != m_Avatar}', Cont:'{null != m_Cont}', Anim:'{null != m_Cont?.m_Animator}'");
+
+            valid = (null != m_Cont && null != m_Cont?.m_Animator);
+            Logger.Dbg?.Info(DebugEntityData());
+        }
+
+        public string DebugEntityData()
+        {
+            return $"id:'{m_id}', sc:{m_Source}, valid:{valid}, Rig:'{null != m_RigManager}', Avatar:'{null != m_Avatar}' {m_Barcode.ToString()}, Cont:'{null != m_Cont}', Anim:'{null != m_Cont?.m_Animator}'";
         }
     }
 
@@ -164,19 +168,22 @@ namespace AvatarAnimator
         public static void GetAvatarAnimator()
         {
             Logger.Dbg?.Data($"OLD: {PlayerData?.Barcode?.ToString()} '{PlayerData?.Source}' '{null == PlayerData?.RigManager}'  -  NEW:{Player.RigManager.AvatarCrate.Barcode?.ToString()} '{Player.RigManager.AvatarCrate?.Crate?.Title}'");
-            if ("PolyBlank" == Player.RigManager.AvatarCrate?.Crate?.Title) return;
 
-            bool wasInvalid = EntityDataSources.Invalid == PlayerData?.Source;
+            if (Const.PolyBlankAvatar == Player.RigManager.AvatarCrate?.Crate?.Title)
+            {
+                PlayerData?.MakeInvalid();
+                return;
+            }
+
+            bool hasInvalidSource = EntityDataSources.Invalid == PlayerData?.Source;
             bool hasAvatarChange = Player.RigManager.AvatarCrate.Barcode != PlayerData?.Barcode; // if false => level change => new Data needed
 
-            if (!hasAvatarChange || null == PlayerData || wasInvalid)
+            if (!hasAvatarChange || null == PlayerData || hasInvalidSource)
                 PlayerData = EntityData.Create();
             else
                 PlayerData.UpdateAvatar();
 
-            if (!PlayerData.IsValid) return;
             Logger.Dbg?.Info($"GetPlayerAvatarAnimator hasAvatarChange:{hasAvatarChange}");
-
             if (hasAvatarChange)
                 OnAvatarChange?.Invoke(PlayerData);
             else

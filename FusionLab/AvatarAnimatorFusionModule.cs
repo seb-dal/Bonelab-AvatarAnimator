@@ -12,13 +12,11 @@ namespace AvatarAnimator.FusionLab
         public override string Name => BuildInfo.Name;
         public override string Author => BuildInfo.Author;
         public override Version Version => new(BuildInfo.Version);
-        public override ConsoleColor Color => ConsoleColor.Red;
+        public override ConsoleColor Color => ConsoleColor.DarkGreen;
 
         private static bool isOnline = false;
 
         private static readonly Dictionary<byte, OtherPlayerAnimator> players = new();
-
-        private static readonly Dictionary<byte, NetworkPlayer> playersConnecting = new();
 
         protected override void OnModuleRegistered()
         {
@@ -85,27 +83,6 @@ namespace AvatarAnimator.FusionLab
                 if (func(p)) return p;
             }
             return null;
-        }
-
-        private static void PlayerConnecting()
-        {
-            if (0 == playersConnecting.Count)
-            {
-                Core.OnUpdateEvt -= PlayerConnecting;
-                return;
-            }
-            for (int i = playersConnecting.Count - 1; i >= 0; i--)
-            {
-                var elem = playersConnecting.ElementAt(i);
-                var player = elem.Value;
-                if (null == player.RigRefs?.RigManager) continue;
-                Logger.Dbg?.Info($"Player '{player.PlayerID.SmallID}' Join");
-                players.Add(player.PlayerID.SmallID, new(player, player.PlayerID));
-                playersConnecting.Remove(elem.Key);
-
-                if (player.PlayerID.IsMe) continue;
-                PlayerStateChangeMessageModule.SendMessageTo(player.PlayerID.SmallID, new(PlayerAnimator.Id, null, PlayerAnimator.GetPlayerStates()));
-            }
         }
 
         ////
@@ -175,12 +152,21 @@ namespace AvatarAnimator.FusionLab
                 }
                 else
                 {
-                    var other = players[playerId.SmallID];
-                    Logger.Dbg?.Info($"Other Player '{playerId.SmallID}' avatar changed");
-                    other.OnAvatarChanged();
+                    if (Const.PolyBlankAvatar == value)
+                    {
+                        // Level Change: remove player temporarily and re-add them in OnNetworkRigCreated
+                        if (players.ContainsKey(playerId.SmallID)) players.Remove(playerId.SmallID);
+                        return;
+                    }
+                    UpdateSystem.CallLaterOnce(() =>
+                    {
+                        Logger.Dbg?.Info($"Other Player '{playerId.SmallID}' avatar changed");
+                        players[playerId.SmallID].OnAvatarChanged();
+                    });
                 }
             }
         }
+
         private void OnLevelLoaded(LevelInfo _)
         {
             Logger.Dbg?.Info($"Level finish to loading, use {PlayerStateChangeMessageModule.WaitingList.Count} stored messages");
@@ -190,15 +176,31 @@ namespace AvatarAnimator.FusionLab
             }
             PlayerStateChangeMessageModule.WaitingList.Clear();
         }
-        private void OnNetworkRigCreated(NetworkPlayer _1, RigManager _2)
+        private void OnNetworkRigCreated(NetworkPlayer player, RigManager _2)
         {
             Logger.Dbg?.Debug("OnNetworkRigCreated");
+
+            var smallId = player.PlayerID.SmallID;
+            Logger.Dbg?.Info($"Player '{smallId}' rig update");
+            if (players.ContainsKey(smallId)) players.Remove(smallId);
+            players.Add(smallId, new(player, player.PlayerID));
         }
         private void OnNetworkPlayerRegistered(NetworkPlayer player)
         {
             Logger.Dbg?.Debug("OnNetworkPlayerRegistered");
-            playersConnecting.Add(player.PlayerID.SmallID, player);
-            if (1 == playersConnecting.Count) Core.OnUpdateEvt += PlayerConnecting;
+            UpdateSystem.CallLaterOnce(() =>
+            {
+                if (null == player.RigRefs?.RigManager) return;
+                var smallId = player.PlayerID.SmallID;
+                Logger.Dbg?.Info($"Player '{smallId}' Join");
+                if (players.ContainsKey(smallId)) players.Remove(smallId);
+                players.Add(smallId, new(player, player.PlayerID));
+
+                if (player.PlayerID.IsMe) return;
+                var states = PlayerAnimator.GetPlayerStates();
+                if (states.Count <= 0) return;
+                PlayerStateChangeMessageModule.SendMessageTo(player.PlayerID.SmallID, new(PlayerAnimator.Id, null, states));
+            });
         }
     }
 }

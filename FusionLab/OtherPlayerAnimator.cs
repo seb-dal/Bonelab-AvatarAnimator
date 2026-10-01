@@ -1,5 +1,4 @@
-﻿using UnityEngine;
-using Newtonsoft.Json;
+﻿using Newtonsoft.Json;
 using LabFusion.Player;
 using LabFusion.Entities;
 
@@ -12,54 +11,55 @@ namespace AvatarAnimator.FusionLab
         public byte m_smallId;
         [JsonProperty("States")]
         public List<PlayerStateChange> m_States = new();
-        [JsonProperty("Now")]
-        public DateTime now;
 
         public OtherPlayerStates(byte smallId, PlayerStateChange change = null, List<PlayerStateChange> states = null)
         {
             m_smallId = smallId;
             if (null != change) m_States.Add(change);
             if (null != states) m_States.AddRange(states);
-            now = DateTime.Now;
         }
 
         public static string Serialize(OtherPlayerStates obj) => JsonConvert.SerializeObject(obj, Formatting.None);
         public static OtherPlayerStates Deserialize(string json) => JsonConvert.DeserializeObject<OtherPlayerStates>(json);
     }
 
+    public class OtherPlayerState
+    {
+        public int m_Layer;
+        public string m_State;
+        public OtherPlayerState(int layer, string state) { m_Layer = layer; m_State = state; }
+    }
+
     public class OtherPlayerAnimator
     {
         private readonly List<EntityData> m_mirrorAnimators = new();
-        private readonly Dictionary<int, PlayerStateChange> m_States = new();
+        private readonly Dictionary<int, OtherPlayerState> m_States = new();
         private readonly OtherPlayerData m_player = null;
 
         public OtherPlayerAnimator(NetworkPlayer player, PlayerID playerId)
         {
             m_player = OtherPlayerData.Create(player, playerId);
-            foreach (var layer in m_player.Data.ListLayer)
-            {
-                m_States.Add(layer.LayerIndex, new(layer.LayerIndex, layer.StartState));
-            }
+            UpdateStates();
         }
 
         public void SetAnimatorState(OtherPlayerStates states)
         {
-            if (null != states || !m_player.IsValid)
+            if (null == states || !m_player.IsValid)
             {
-                Logger.Dbg?.Warn("Cannot change state");
+                Logger.Dbg?.Warn($"Cannot change state {null == states} {!m_player.IsValid}");
+                Logger.Dbg?.Info(m_player.DebugEntityData());
                 return;
             }
-            var diff = (float)(DateTime.Now - states.now).TotalSeconds;
+
+            var now = DateTime.Now;
             foreach (var state in states.m_States)
             {
                 // Sync animation
-                float nTime = state.m_nTime ?? 0.0f;
-                float d = state.m_Duration ?? 0.0f;
-                float s = state.m_Speed ?? 1.0f;
-                if (d != 0.0f && s != 0.0f) nTime += diff / (d * s);
+                float nTime = Utils.ComputNTime(now, state.now, state.m_nTime, state.m_Duration, state.m_Speed);
                 m_player.Animator.Play(state.m_State, state.m_Layer, nTime);
                 foreach (var mirror in m_mirrorAnimators) mirror.Animator.Play(state.m_State, state.m_Layer, nTime);
-                m_States.Add(state.m_Layer, state);
+                Logger.Dbg?.Info("OtherPlayerAnimator PlayState");
+                m_States[state.m_Layer].m_State = state.m_State;
             }
         }
 
@@ -67,15 +67,29 @@ namespace AvatarAnimator.FusionLab
         {
             m_player.UpdateAvatar();
             foreach (var mirror in m_mirrorAnimators) mirror.UpdateAvatar();
+            UpdateStates();
+        }
+        private void UpdateStates()
+        {
+            m_States.Clear();
+
+            if (!m_player.IsValid) return;
+            foreach (var layer in m_player.Data.ListLayer)
+            {
+                m_States.Add(layer.LayerIndex, new(layer.LayerIndex, layer.StartState));
+            }
         }
 
         public void AddMirror(EntityData data)
         {
             m_mirrorAnimators.Add(data);
+
+            if (!m_player.IsValid) return;
             foreach (var layer in m_States)
             {
                 var state = m_player.Animator.GetCurrentAnimatorStateInfo(layer.Value.m_Layer);
                 data.Animator.Play(layer.Value.m_State, layer.Value.m_Layer, state.normalizedTime);
+                Logger.Dbg?.Info($"AddMirror {layer.Value.m_State} {layer.Value.m_Layer} {state.normalizedTime}");
             }
         }
         public void RemoveMirror(EntityData data) { m_mirrorAnimators.Remove(data); }

@@ -7,6 +7,7 @@ namespace AvatarAnimator
     {
         private static readonly DelayTimeGate delay = new(20);
         private static bool SaveLaterActif = false;
+        public static event Action<bool> OnSaveStateChange;
 
         private static MelonPreferences_Category cat;
         private static MelonPreferences_Entry<bool> debugLog;
@@ -52,8 +53,9 @@ namespace AvatarAnimator
             if (SaveLaterActif)
             {
                 SaveLaterActif = false;
-                MenuUi.SaveButtonState(SaveLaterActif);
-                Core.OnUpdateEvt -= DelayUpdate;
+                OnSaveStateChange?.Invoke(SaveLaterActif);
+                UpdateSystem.Remove(DelayUpdate);
+
             }
         }
 
@@ -62,8 +64,8 @@ namespace AvatarAnimator
             delay.Reset();
             if (SaveLaterActif) return;
             SaveLaterActif = true;
-            MenuUi.SaveButtonState(SaveLaterActif);
-            Core.OnUpdateEvt += DelayUpdate;
+            OnSaveStateChange?.Invoke(SaveLaterActif);
+            UpdateSystem.CallLater(DelayUpdate);
         }
         private static void DelayUpdate()
         {

@@ -18,7 +18,7 @@ namespace AvatarAnimator
             /// <summary> For Coding temporary logs that need to be more visible that other logs </summary>
             public void Highlight(string msg) { Log(ConsoleColor.DarkRed, "[Dbg-High] " + msg); }
             /// <summary> For when you need to know how you manage to get here (i mean in the code) </summary>
-            public void StackTrace() { Log(ConsoleColor.DarkRed, (new System.Diagnostics.StackTrace()).ToString()); }
+            public void StackTrace() { Log(ConsoleColor.DarkRed, "[StackTrace] " + (new System.Diagnostics.StackTrace()).ToString()); }
             public void Warn(string msg) { Log(ConsoleColor.Yellow, "[Dbg-W] " + msg); }
             public void Err(string msg) { Log(ConsoleColor.Red, "[Dbg-E] " + msg); }
         }

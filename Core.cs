@@ -10,7 +10,7 @@ namespace AvatarAnimator
         public const string Company = "";
         public const string Version = "1.0.0";
         public const string DownloadLink = "";
-        public const uint ConsoleColorARGB = 0xff008000;
+        public const uint ConsoleColorRGB = 0x008000;
     }
 
     public class Core : MelonMod
@@ -18,7 +18,6 @@ namespace AvatarAnimator
         private static bool enabled = false;
         public static bool IsLevelLoading { get => !enabled; }
 
-        public static event Action OnUpdateEvt;
 
         public event Action<PlayerStateChange> OnAvatarStateChanged;
         public event Action<EntityData> OnPlayerAvatarChange;
@@ -56,19 +55,18 @@ namespace AvatarAnimator
         {
             if (!enabled) return;
             LocalInput.Update();
-            OnUpdateEvt?.Invoke();
+            UpdateSystem.Update();
             if (CorePrivate.UpdateScanner.Now()) MirrorScanner.Scan();
             if (CorePrivate.UpdateAnim.Now()) PlayerAnimator.Update();
         }
     }
 
     // Keep "public functions" public but remove from Core External API
-    public class CorePrivate
+    public static class CorePrivate
     {
         private static UpdateTimeGate updateScanner;
         private static UpdateTimeGate updateAnim;
         private static bool switchAvatarHooked = false;
-        private static bool updateAvatarChangeLater = false;
 
         public static UpdateTimeGate UpdateScanner { get => updateScanner; }
         public static UpdateTimeGate UpdateAnim { get => updateAnim; }
@@ -78,17 +76,12 @@ namespace AvatarAnimator
             updateScanner = new UpdateTimeGate(Config.ScanMirrorsInterval);
             updateAnim = new UpdateTimeGate(Config.PlayerAnimatorUpdateInterval);
         }
-        private static void UpdateAvatarChangeLater()
-        {
-            PlayerScanner.GetAvatarAnimator();
-            Core.OnUpdateEvt -= UpdateAvatarChangeLater;
-            updateAvatarChangeLater = false;
-        }
         public static void UpdatePlayerAvatar()
         {
-            if (updateAvatarChangeLater) return;
-            Core.OnUpdateEvt += UpdateAvatarChangeLater;
-            updateAvatarChangeLater = true;
+            UpdateSystem.CallLaterOnce("UpdateAvatarChangeLater", () =>
+            {
+                PlayerScanner.GetAvatarAnimator();
+            });
         }
 
         private static void OnSwitchAvatarPostfix(Il2CppSLZ.VRMK.Avatar _) { UpdatePlayerAvatar(); }

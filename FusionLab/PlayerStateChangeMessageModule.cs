@@ -22,12 +22,14 @@ namespace AvatarAnimator.FusionLab
             Logger.Dbg?.Data($"Msg sent '{data.m_data}'");
             MessageRelay.RelayModule<PlayerStateChangeMessageModule, MyNetSerializable>(data, new(RelayType.ToOtherClients, NetworkChannel.Reliable));
         }
+
         public static void SendMessageTo(byte smallId, OtherPlayerStates d)
         {
             var data = new MyNetSerializable() { m_data = OtherPlayerStates.Serialize(d), };
             Logger.Dbg?.Data($"Msg sent '{data.m_data}' to {smallId}");
             MessageRelay.RelayModule<PlayerStateChangeMessageModule, MyNetSerializable>(data, new(smallId, NetworkChannel.Reliable));
         }
+
         protected override void OnHandleMessage(ReceivedMessage received)
         {
             var data = received.ReadData<MyNetSerializable>();
@@ -38,9 +40,11 @@ namespace AvatarAnimator.FusionLab
             {
                 Logger.Dbg?.Info($"Level didn't finish to load, store Message data");
                 m_waitingList.Add(state_s);
-                return;
             }
-            AvatarAnimatorFusionModule.ChangeOtherPlayerState(state_s);
+            else
+            {
+                AvatarAnimatorFusionModule.ChangeOtherPlayerState(state_s);
+            }
         }
     }
 }
