@@ -140,7 +140,8 @@ namespace AvatarAnimator.FusionLab
             PlayerStateChangeMessageModule.SendMessage(new(PlayerAnimator.Id, change));
         }
 
-        private bool levelLoading = false;
+        private static bool m_levelLoading = false;
+        public static bool IsLevelLoading { get => m_levelLoading; }
         private void OnPlayerMetadataChangedEvent(PlayerID playerId, string key, string value)
         {
             Logger.Dbg?.Debug($"id:{playerId?.SmallID} key:'{key}' value:'{value}'");
@@ -149,7 +150,7 @@ namespace AvatarAnimator.FusionLab
             {
                 case PlayerMetadataChangedKeys.AvatarTitle:
                     {
-                        if (levelLoading) return;
+                        if (IsLevelLoading) return;
                         if (playerId.IsMe)
                         {
                             Logger.Dbg?.Info($"Player avatar changed");
@@ -167,11 +168,19 @@ namespace AvatarAnimator.FusionLab
                     break;
                 case PlayerMetadataChangedKeys.Loading:
                     {
-                        levelLoading = (Const.True == value);
-                        if (!levelLoading)
+                        m_levelLoading = (Const.True == value);
+                        if (!IsLevelLoading)
                         {
+                            Logger.Dbg?.Info($"Level finish to loading, use {PlayerStateChangeMessageModule.WaitingList.Count} stored messages");
+
                             CorePrivate.UpdatePlayerAvatar();
                             foreach (var player in players) { player.Value.OnAvatarChanged(); }
+
+                            foreach (var states in PlayerStateChangeMessageModule.WaitingList)
+                            {
+                                ChangeOtherPlayerState(states);
+                            }
+                            PlayerStateChangeMessageModule.WaitingList.Clear();
                         }
                     }
                     break;
@@ -180,12 +189,7 @@ namespace AvatarAnimator.FusionLab
 
         private void OnLevelLoaded(LevelInfo _)
         {
-            Logger.Dbg?.Info($"Level finish to loading, use {PlayerStateChangeMessageModule.WaitingList.Count} stored messages");
-            foreach (var states in PlayerStateChangeMessageModule.WaitingList)
-            {
-                ChangeOtherPlayerState(states);
-            }
-            PlayerStateChangeMessageModule.WaitingList.Clear();
+            Logger.Dbg?.Debug("OnLevelLoaded");
         }
         private void OnNetworkRigCreated(NetworkPlayer player, RigManager _2)
         {

@@ -36,7 +36,7 @@ namespace AvatarAnimator.FusionLab
             var state_s = OtherPlayerStates.Deserialize(data.m_data);
             Logger.Dbg?.Data($"Msg received '{data.m_data}' from {state_s.m_smallId}");
             if (PlayerAnimator.Id == state_s.m_smallId) return;
-            if (Core.IsLevelLoading)
+            if (AvatarAnimatorFusionModule.IsLevelLoading)
             {
                 Logger.Dbg?.Info($"Level didn't finish to load, store Message data");
                 m_waitingList.Add(state_s);
