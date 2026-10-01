@@ -169,12 +169,6 @@ namespace AvatarAnimator
         {
             Logger.Dbg?.Data($"OLD: {PlayerData?.Barcode?.ToString()} '{PlayerData?.Source}' '{null == PlayerData?.RigManager}'  -  NEW:{Player.RigManager.AvatarCrate.Barcode?.ToString()} '{Player.RigManager.AvatarCrate?.Crate?.Title}'");
 
-            if (Const.PolyBlankAvatar == Player.RigManager.AvatarCrate?.Crate?.Title)
-            {
-                PlayerData?.MakeInvalid();
-                return;
-            }
-
             bool hasInvalidSource = EntityDataSources.Invalid == PlayerData?.Source;
             bool hasAvatarChange = Player.RigManager.AvatarCrate.Barcode != PlayerData?.Barcode; // if false => level change => new Data needed
 

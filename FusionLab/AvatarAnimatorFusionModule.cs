@@ -139,31 +139,42 @@ namespace AvatarAnimator.FusionLab
             if (!isOnline) return;
             PlayerStateChangeMessageModule.SendMessage(new(PlayerAnimator.Id, change));
         }
+
+        private bool levelLoading = false;
         private void OnPlayerMetadataChangedEvent(PlayerID playerId, string key, string value)
         {
+            Logger.Dbg?.Debug($"id:{playerId?.SmallID} key:'{key}' value:'{value}'");
             if (!players.ContainsKey(playerId.SmallID)) return;
-            if ("AvatarTitle" == key)
+            switch (key)
             {
-                Logger.Dbg?.Data($"key:'{key}' value:'{value}'");
-                if (playerId.IsMe)
-                {
-                    Logger.Dbg?.Info($"Player avatar changed");
-                    CorePrivate.UpdatePlayerAvatar();
-                }
-                else
-                {
-                    if (Const.PolyBlankAvatar == value)
+                case PlayerMetadataChangedKeys.AvatarTitle:
                     {
-                        // Level Change: remove player temporarily and re-add them in OnNetworkRigCreated
-                        if (players.ContainsKey(playerId.SmallID)) players.Remove(playerId.SmallID);
-                        return;
+                        if (levelLoading) return;
+                        if (playerId.IsMe)
+                        {
+                            Logger.Dbg?.Info($"Player avatar changed");
+                            CorePrivate.UpdatePlayerAvatar();
+                        }
+                        else
+                        {
+                            UpdateSystem.CallLaterOnce(() =>
+                            {
+                                Logger.Dbg?.Info($"Other Player '{playerId.SmallID}' avatar changed");
+                                players[playerId.SmallID].OnAvatarChanged();
+                            });
+                        }
                     }
-                    UpdateSystem.CallLaterOnce(() =>
+                    break;
+                case PlayerMetadataChangedKeys.Loading:
                     {
-                        Logger.Dbg?.Info($"Other Player '{playerId.SmallID}' avatar changed");
-                        players[playerId.SmallID].OnAvatarChanged();
-                    });
-                }
+                        levelLoading = (Const.True == value);
+                        if (!levelLoading)
+                        {
+                            CorePrivate.UpdatePlayerAvatar();
+                            foreach (var player in players) { player.Value.OnAvatarChanged(); }
+                        }
+                    }
+                    break;
             }
         }
 
