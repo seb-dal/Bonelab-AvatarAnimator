@@ -11,7 +11,6 @@ using System.Diagnostics;
 [assembly: Debuggable(DebuggableAttribute.DebuggingModes.IgnoreSymbolStoreSequencePoints)]
 
 [assembly: AssemblyTitle(AvatarAnimator.BuildInfo.Name)]
-[assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany(AvatarAnimator.BuildInfo.Company)]
 [assembly: AssemblyProduct(AvatarAnimator.BuildInfo.Name)]

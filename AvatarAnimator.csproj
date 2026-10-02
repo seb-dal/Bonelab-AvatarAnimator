@@ -12,6 +12,10 @@
 		<NeutralLanguage>en-US</NeutralLanguage>
 		<AssemblyName>AvatarAnimator</AssemblyName>
 		<DebugType>embedded</DebugType>
+
+		<AssemblyDescription>Simple avatar animation using Unity Animator</AssemblyDescription>
+		<WebsiteUrl>https://github.com/seb-dal/Bonelab-AvatarAnimator</WebsiteUrl>
+		<OutputFolder>\Build\AvatarAnimator</OutputFolder>
 	</PropertyGroup>
 
 	<PropertyGroup>
@@ -284,7 +288,63 @@
 		<DefineConstants>TRACE;ENABLE_MOD</DefineConstants>
 	</PropertyGroup>
 
+	<UsingTask TaskName="PostBuildScript" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+		<ParameterGroup>
+			<Name ParameterType="System.String" Required="true" />
+			<Description ParameterType="System.String" Required="true" />
+			<WebsiteUrl ParameterType="System.String" Required="true" />
+		</ParameterGroup>
+		<Task>
+			<Using Namespace="System.IO" />
+			<Using Namespace="System.Diagnostics" />
+			<Code Type="Fragment" Language="cs">
+				<![CDATA[
+				string BoneLibPath = @"$(BONELAB_DIR)\Mods\BoneLib.dll";
+				string MelonLoaderPath = @"$(BONELAB_DIR)\MelonLoader\net6\MelonLoader.dll";
+				string AvatarAnimatorPath = @"$(BONELAB_DIR)\Mods\AvatarAnimator.dll";
+				string JsonOutputFilePath = @"$(ProjectDir)$(OutputFolder)\manifest.json";
+				
+				var ToVersion = (Func<string, string>)((v) => {
+					var i = v.LastIndexOf('.');
+					if(-1 == i) return "";
+					return v.Substring(0, i);
+				});
+				
+				FileVersionInfo BoneLib = FileVersionInfo.GetVersionInfo(BoneLibPath);
+				string BoneLibVersion = BoneLib.FileVersion;
+				Log.LogMessage(MessageImportance.High, "File: " + BoneLib.FileDescription + "  Version: " + BoneLibVersion);
+				
+				FileVersionInfo MelonLoader = FileVersionInfo.GetVersionInfo(MelonLoaderPath);
+				string MelonLoaderVersion = ToVersion(MelonLoader.FileVersion);
+				Log.LogMessage(MessageImportance.High, "File: " + MelonLoader.FileDescription + "  Version: " + MelonLoaderVersion);
+				
+				FileVersionInfo AvatarAnimator = FileVersionInfo.GetVersionInfo(AvatarAnimatorPath);
+				string AvatarAnimatorVersion = AvatarAnimator.FileVersion;
+				Log.LogMessage(MessageImportance.High, "File: " + AvatarAnimator.FileDescription + "  Version: " + AvatarAnimatorVersion);
+				
+				
+				string jsonString = $@"{{
+	""name"": ""{Name}"",
+	""description"": ""{Description}"",
+	""version_number"": ""{AvatarAnimatorVersion}"",
+	""dependencies"": [ ""bonelib-BoneLib-{BoneLibVersion}"", ""LavaGang-MelonLoader-{MelonLoaderVersion}"" ],
+	""website_url"": ""{WebsiteUrl}""
+}}";
+				File.WriteAllText(JsonOutputFilePath, jsonString);
+				Log.LogMessage(MessageImportance.High, jsonString + " => " + JsonOutputFilePath);
+			]]>
+			</Code>
+		</Task>
+	</UsingTask>
+
 	<Target Name="PostBuild" AfterTargets="PostBuildEvent">
 		<Exec Command="COPY &quot;$(TargetPath)&quot; &quot;$(BONELAB_DIR)\Mods&quot;" />
+
+		<Exec Command="if not exist &quot;$(ProjectDir)$(OutputFolder)\Mods&quot; mkdir &quot;$(ProjectDir)$(OutputFolder)\Mods&quot;" />
+		<Exec Command="COPY &quot;$(TargetPath)&quot; &quot;$(ProjectDir)$(OutputFolder)\Mods&quot;" />
+		<Exec Command="COPY &quot;$(ProjectDir)\Assets\README.md&quot; &quot;$(ProjectDir)$(OutputFolder)&quot;" />
+		<Exec Command="COPY &quot;$(ProjectDir)\Assets\icon.png&quot; &quot;$(ProjectDir)$(OutputFolder)&quot;" />
+		<Exec Command="COPY &quot;$(ProjectDir)\Assets\CHANGELOG.md&quot; &quot;$(ProjectDir)$(OutputFolder)&quot;" />
+		<PostBuildScript Name="$(AssemblyName)" Description="$(AssemblyDescription)" WebsiteUrl="$(WebsiteUrl)"/>
 	</Target>
 </Project>
