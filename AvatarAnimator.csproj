@@ -301,6 +301,7 @@
 				<![CDATA[
 				string BoneLibPath = @"$(BONELAB_DIR)\Mods\BoneLib.dll";
 				string MelonLoaderPath = @"$(BONELAB_DIR)\MelonLoader\net6\MelonLoader.dll";
+				string FieldInjectorPath = @"$(BONELAB_DIR)\Mods\FieldInjector.dll";
 				string AvatarAnimatorPath = @"$(BONELAB_DIR)\Mods\AvatarAnimator.dll";
 				string JsonOutputFilePath = @"$(ProjectDir)$(OutputFolder)\manifest.json";
 				
@@ -322,12 +323,15 @@
 				string AvatarAnimatorVersion = AvatarAnimator.FileVersion;
 				Log.LogMessage(MessageImportance.High, "File: " + AvatarAnimator.FileDescription + "  Version: " + AvatarAnimatorVersion);
 				
+				FileVersionInfo FieldInjector = FileVersionInfo.GetVersionInfo(FieldInjectorPath);
+				string FieldInjectorVersion = "2.1.1";   // FieldInjector doesn't have the correct version set in dll
+				Log.LogMessage(MessageImportance.High, "File: " + FieldInjector.FileDescription + "  Version: " + FieldInjectorVersion);
 				
 				string jsonString = $@"{{
 	""name"": ""{Name}"",
 	""description"": ""{Description}"",
 	""version_number"": ""{AvatarAnimatorVersion}"",
-	""dependencies"": [ ""bonelib-BoneLib-{BoneLibVersion}"", ""LavaGang-MelonLoader-{MelonLoaderVersion}"" ],
+	""dependencies"": [ ""bonelib-BoneLib-{BoneLibVersion}"", ""LavaGang-MelonLoader-{MelonLoaderVersion}"", ""WNP78-FieldInjector-{FieldInjectorVersion}"" ],
 	""website_url"": ""{WebsiteUrl}""
 }}";
 				File.WriteAllText(JsonOutputFilePath, jsonString);
