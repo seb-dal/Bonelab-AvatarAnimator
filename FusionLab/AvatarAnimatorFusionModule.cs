@@ -12,13 +12,12 @@ namespace AvatarAnimator.FusionLab
         public override string Name => BuildInfo.Name;
         public override string Author => BuildInfo.Author;
         public override Version Version => new(BuildInfo.Version);
-        public override ConsoleColor Color => ConsoleColor.Red;
+        public override ConsoleColor Color => ConsoleColor.DarkGreen;
 
         private static bool isOnline = false;
 
         private static readonly Dictionary<byte, OtherPlayerAnimator> players = new();
-
-        private static readonly Dictionary<byte, NetworkPlayer> playersConnecting = new();
+        private static readonly Dictionary<byte, NetworkPlayer> waitingPlayers = new();
 
         protected override void OnModuleRegistered()
         {
@@ -87,27 +86,6 @@ namespace AvatarAnimator.FusionLab
             return null;
         }
 
-        private static void PlayerConnecting()
-        {
-            if (0 == playersConnecting.Count)
-            {
-                Core.OnUpdateEvt -= PlayerConnecting;
-                return;
-            }
-            for (int i = playersConnecting.Count - 1; i >= 0; i--)
-            {
-                var elem = playersConnecting.ElementAt(i);
-                var player = elem.Value;
-                if (null == player.RigRefs?.RigManager) continue;
-                Logger.Dbg?.Info($"Player '{player.PlayerID.SmallID}' Join");
-                players.Add(player.PlayerID.SmallID, new(player, player.PlayerID));
-                playersConnecting.Remove(elem.Key);
-
-                if (player.PlayerID.IsMe) continue;
-                PlayerStateChangeMessageModule.SendMessageTo(player.PlayerID.SmallID, new(PlayerAnimator.Id, null, PlayerAnimator.GetPlayerStates()));
-            }
-        }
-
         ////
 
         private void OnNew(EntityData data)
@@ -162,43 +140,113 @@ namespace AvatarAnimator.FusionLab
             if (!isOnline) return;
             PlayerStateChangeMessageModule.SendMessage(new(PlayerAnimator.Id, change));
         }
+
+        private static bool m_levelLoading = false;
+        public static bool IsLevelLoading { get => m_levelLoading; }
         private void OnPlayerMetadataChangedEvent(PlayerID playerId, string key, string value)
         {
-            if (!players.ContainsKey(playerId.SmallID)) return;
-            if ("AvatarTitle" == key)
+            Logger.Dbg?.Debug($"id:{playerId?.SmallID} key:'{key}' value:'{value}'");
+            switch (key)
             {
-                Logger.Dbg?.Data($"key:'{key}' value:'{value}'");
-                if (playerId.IsMe)
-                {
-                    Logger.Dbg?.Info($"Player avatar changed");
-                    CorePrivate.UpdatePlayerAvatar();
-                }
-                else
-                {
-                    var other = players[playerId.SmallID];
-                    Logger.Dbg?.Info($"Other Player '{playerId.SmallID}' avatar changed");
-                    other.OnAvatarChanged();
-                }
+                case PlayerMetadataChangedKeys.AvatarTitle:
+                    {
+                        if (IsLevelLoading) return;
+                        if (!players.ContainsKey(playerId.SmallID)) return;
+                        if (playerId.IsMe)
+                        {
+                            Logger.Dbg?.Info($"Player avatar changed");
+                            CorePrivate.UpdatePlayerAvatar();
+                        }
+                        else
+                        {
+                            UpdateSystem.CallLaterOnce(() =>
+                            {
+                                Logger.Dbg?.Info($"Other Player '{playerId.SmallID}' avatar changed");
+                                players[playerId.SmallID].OnAvatarChanged();
+                            });
+                        }
+                    }
+                    break;
+                case PlayerMetadataChangedKeys.Loading:
+                    {
+                        if (!playerId.IsMe) return;
+                        m_levelLoading = (Const.True == value);
+                        Logger.Dbg?.Info($"Level loading = {IsLevelLoading}");
+                        if (!IsLevelLoading)
+                        {
+                            PlayerScanner.GetAvatarAnimator();
+                            if (waitingPlayers.Count > 0)
+                            {
+                                foreach (var player in waitingPlayers) { AddOrUpdatePlayer(player.Value); }
+                            }
+                            foreach (var player in players) { player.Value.OnAvatarChanged(); }
+
+                            Logger.Dbg?.Info($"Level finish to loading, use {PlayerStateChangeMessageModule.WaitingList.Count} stored messages");
+                            foreach (var states in PlayerStateChangeMessageModule.WaitingList)
+                            {
+                                ChangeOtherPlayerState(states);
+                            }
+                            PlayerStateChangeMessageModule.WaitingList.Clear();
+                        }
+                    }
+                    break;
             }
         }
+
         private void OnLevelLoaded(LevelInfo _)
         {
-            Logger.Dbg?.Info($"Level finish to loading, use {PlayerStateChangeMessageModule.WaitingList.Count} stored messages");
-            foreach (var states in PlayerStateChangeMessageModule.WaitingList)
-            {
-                ChangeOtherPlayerState(states);
-            }
-            PlayerStateChangeMessageModule.WaitingList.Clear();
+            Logger.Dbg?.Debug("OnLevelLoaded");
         }
-        private void OnNetworkRigCreated(NetworkPlayer _1, RigManager _2)
+        private void OnNetworkRigCreated(NetworkPlayer player, RigManager _2)
         {
             Logger.Dbg?.Debug("OnNetworkRigCreated");
+            if (IsLevelLoading)
+            {
+                Utils.AddOrReplace(waitingPlayers, player.PlayerID.SmallID, player);
+            }
+            else
+            {
+                UpdateSystem.CallLaterOnce(() =>
+                {
+                    if (IsLevelLoading) return;
+                    AddOrUpdatePlayer(player);
+                });
+            }
         }
         private void OnNetworkPlayerRegistered(NetworkPlayer player)
         {
             Logger.Dbg?.Debug("OnNetworkPlayerRegistered");
-            playersConnecting.Add(player.PlayerID.SmallID, player);
-            if (1 == playersConnecting.Count) Core.OnUpdateEvt += PlayerConnecting;
+            if (IsLevelLoading)
+            {
+                Utils.AddOrReplace(waitingPlayers, player.PlayerID.SmallID, player);
+            }
+            else
+            {
+                UpdateSystem.CallLaterOnce(() =>
+                {
+                    if (IsLevelLoading) return;
+                    AddOrUpdatePlayer(player);
+
+                    if (player.PlayerID.IsMe) return;
+                    var states = PlayerAnimator.GetPlayerStates();
+                    if (states.Count <= 0) return;
+                    PlayerStateChangeMessageModule.SendMessageTo(player.PlayerID.SmallID, new(PlayerAnimator.Id, null, states));
+                });
+            }
+        }
+        private void AddOrUpdatePlayer(NetworkPlayer player)
+        {
+            var smallId = player.PlayerID.SmallID;
+            if (players.ContainsKey(smallId))
+            {
+                Logger.Dbg?.Info($"Player '{smallId}' update");
+                players.Remove(smallId);
+            }
+            else
+            {
+                Logger.Dbg?.Info($"Player '{smallId}' Join");
+            }
+            players.Add(smallId, new(player, player.PlayerID));
         }
     }
 }

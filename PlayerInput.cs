@@ -4,9 +4,6 @@ using BoneLib;
 
 namespace AvatarAnimator
 {
-    /// <summary>
-    /// Inputs ___Down() and ___Up() cannot be use safely because it is shared across the game and mods and the first one to use it consume the value.
-    /// </summary>
     public static class LocalInput
     {
         private static readonly HashSet<KeyCode> m_KeyboardInputs = new();

@@ -28,6 +28,7 @@ namespace AvatarAnimator
             m_ConfigSaveButton = m_ConfigPage.CreateFunction("Save", Color.white, () => Config.SavePreferences());
             SaveButtonState(false);
             m_ConfigSaveButton.ElementTooltip = "Save configuration changes \n Black: No change, Cyan: Change pending (auto-save after 20 sec)";
+            Config.OnSaveStateChange += SaveButtonState;
 
             var dbg = m_ConfigPage.CreateBool("Debug Logs", Color.white, Logger.DebugLogs, (bool on) => Config.SwitchDebugLog(on));
             dbg.ElementTooltip = "Enable Debug logs";

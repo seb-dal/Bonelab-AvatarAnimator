@@ -1,6 +1,4 @@
-﻿
-using BoneLib;
-using Il2CppSLZ.Marrow;
+﻿using Il2CppSLZ.Marrow;
 using Il2CppSLZ.Marrow.Warehouse;
 using UnityEngine;
 using static Il2CppSLZ.VRMK.Avatar;
@@ -49,6 +47,24 @@ namespace AvatarAnimator
 
         /// <summary> Override by FusionLab Integration </summary>
         public static PlayerIdGetterFunc GetPlayerId = (RigManager _) => 0;
+
+        public static float ComputNTime(DateTime now, DateTime playAt, float? m_nTime, float? m_Duration, float? m_Speed)
+        {
+            var diff = (float)(now - playAt).TotalSeconds;
+            float nTime = m_nTime ?? 0.0f;
+            float d = m_Duration ?? 0.0f;
+            float s = m_Speed ?? 1.0f;
+            Logger.Dbg?.Info($"Tdiff:{diff} nTime:{nTime} d:{d} s:{s}");
+            if (d != 0.0f && s != 0.0f) nTime += diff / (d * (1 / s));
+            Logger.Dbg?.Info($"nTime:{nTime}");
+            return nTime;
+        }
+
+        public static void AddOrReplace<TKey, TValue>(Dictionary<TKey, TValue> dic, TKey key, TValue value)
+        {
+            if (dic.ContainsKey(key)) dic[key] = value;
+            else dic.Add(key, value);
+        }
     }
 
     public static class Debug
@@ -84,20 +100,16 @@ namespace AvatarAnimator
             }
             foreach (var comp in target.GetComponents<Component>())
             {
-                if (comp != null)
-                {
-                    var nativeType = comp.GetIl2CppType();
-                    Logger.Dbg?.Debug($" Component IL2CPP : {nativeType.FullName}");
-                }
+                if (comp == null) continue;
+                var nativeType = comp.GetIl2CppType();
+                Logger.Dbg?.Debug($" Component IL2CPP : {nativeType.FullName}");
             }
 
             foreach (var comp in target.GetComponentsInParent<Component>())
             {
-                if (comp != null)
-                {
-                    var nativeType = comp.GetIl2CppType();
-                    Logger.Dbg?.Debug($" Parent Component IL2CPP : {nativeType.FullName}");
-                }
+                if (comp == null) continue;
+                var nativeType = comp.GetIl2CppType();
+                Logger.Dbg?.Debug($" Parent Component IL2CPP : {nativeType.FullName}");
             }
         }
 
