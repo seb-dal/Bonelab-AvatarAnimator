@@ -59,6 +59,12 @@ namespace AvatarAnimator
             Logger.Dbg?.Info($"nTime:{nTime}");
             return nTime;
         }
+
+        public static void AddOrReplace<TKey, TValue>(Dictionary<TKey, TValue> dic, TKey key, TValue value)
+        {
+            if (dic.ContainsKey(key)) dic[key] = value;
+            else dic.Add(key, value);
+        }
     }
 
     public static class Debug

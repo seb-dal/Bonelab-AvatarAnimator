@@ -2,6 +2,7 @@
 {
     public static class Const
     {
+        public const string PolyBlankBarcode = "c3534c5a-94b2-40a4-912a-24a8506f6c79";
         public const string PolyBlankAvatar = "PolyBlank";
         public const string True = "true";
     }
