@@ -21,7 +21,7 @@ using System.Diagnostics;
 
 [assembly: AssemblyVersion(AvatarAnimator.BuildInfo.Version)]
 [assembly: AssemblyFileVersion(AvatarAnimator.BuildInfo.Version)]
-[assembly: NeutralResourcesLanguage("en")]
+[assembly: NeutralResourcesLanguage("en-US")]
 
 [assembly: MelonColor(255, AssemblyVar.ColorR, AssemblyVar.ColorG, AssemblyVar.ColorB)]
 [assembly: MelonInfo(typeof(AvatarAnimator.Core), AvatarAnimator.BuildInfo.Name, AvatarAnimator.BuildInfo.Version, AvatarAnimator.BuildInfo.Author, AvatarAnimator.BuildInfo.DownloadLink)]
