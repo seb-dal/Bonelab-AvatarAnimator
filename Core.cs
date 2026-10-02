@@ -6,7 +6,7 @@ namespace AvatarAnimator
     public static class BuildInfo
     {
         public const string Name = "AvatarAnimator";
-        public const string Author = "D";
+        public const string Author = "Daedalus";
         public const string Company = "";
         public const string Version = "1.0.0";
         public const string DownloadLink = "";
