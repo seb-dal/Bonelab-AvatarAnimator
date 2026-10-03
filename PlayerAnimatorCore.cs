@@ -52,7 +52,8 @@ namespace AvatarAnimator
             {
                 Layers.Add(new(layer.LayerIndex));
                 m_LayerIndexToIndex.Add(layer.LayerIndex, i);
-                OnStateChange?.Invoke(layer.LayerIndex, layer.StartState, false);
+                if ("" != layer.StartState)
+                    OnStateChange?.Invoke(layer.LayerIndex, layer.StartState, false);
                 i += 1;
             }
         }

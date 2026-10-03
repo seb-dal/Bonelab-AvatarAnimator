@@ -85,7 +85,6 @@ namespace AvatarAnimator
             {
                 foreach (AnimatorControllerLayer layer in ac.layers)
                 {
-
                     Logger.Msg($"Layer: '{layer.name}'");
                     layerIndex += 1;
                     if (!layer.name.StartsWith(Const.LayerName, StringComparison.CurrentCultureIgnoreCase)) continue;
@@ -93,7 +92,7 @@ namespace AvatarAnimator
                     LayerData layerData = new()
                     {
                         Name = layer.name,
-                        StartState = stateMachine.defaultState.name,
+                        StartState = stateMachine?.defaultState?.name ?? "",
                         LayerIndex = layerIndex,
                         States = new(),
                     };
