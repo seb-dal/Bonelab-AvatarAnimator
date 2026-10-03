@@ -10,7 +10,6 @@ namespace AvatarAnimator
     {
         public static bool IsTriggered(ConditionInput trans)
         {
-
             if (InputType.Unset == trans.Type) return false;
             switch (trans.Type)
             {

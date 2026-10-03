@@ -36,6 +36,7 @@ namespace AvatarAnimator
 
         public static DebugLogger Dbg { get => m_Dbg; }
         public static void Msg(string msg) => m_Logger.Msg(msg);
+        public static void Info(string msg) => m_Logger.Msg(ConsoleColor.Cyan, "[i] " + msg);
         public static void Warn(string msg) => m_Logger.Warning("[W] " + msg);
         public static void Err(string msg) => m_Logger.Error("[E] " + msg);
     }
