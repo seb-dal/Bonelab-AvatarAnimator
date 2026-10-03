@@ -1,9 +1,7 @@
 #if UNITY_EDITOR
 
 using System;
-using System.Collections.Generic;
 using UnityEngine;
-using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEditor.Animations;
 using Newtonsoft.Json;
@@ -16,7 +14,6 @@ namespace AvatarAnimator
     {
         AvatarAnimatorDataContainer container;
         public Animator anim;
-        private readonly GuiLogger Logger = new();
 
         private void OnEnable()
         {
@@ -33,36 +30,36 @@ namespace AvatarAnimator
                 GUILayout.BeginHorizontal();
                 if (GUILayout.Button("How To Use"))
                 {
-                    Logger.Reset();
+                    LoggerGUI.Reset();
                     Help();
                 }
                 if (GUILayout.Button("Populate Data"))
                 {
-                    Logger.Reset();
+                    LoggerGUI.Reset();
                     container.m_Data = null;
                     container.m_SerializeData = null;
                     try
                     {
                         container.PopulateData(anim, CollectData());
                     }
-                    catch (Exception e) { Logger.MsgErr(e.ToString()); }
+                    catch (Exception e) { Logger.Err(e.ToString()); }
                 }
                 if (null != container.m_Data)
                 {
                     if (GUILayout.Button("Test Data"))
                     {
-                        Logger.Reset();
+                        LoggerGUI.Reset();
                         Logger.Msg(JsonConvert.SerializeObject(container.m_Data, Formatting.Indented));
                     }
                     if (GUILayout.Button("Serialize Data"))
                     {
-                        Logger.Reset();
+                        LoggerGUI.Reset();
                         container.SerializeData();
-                        Logger.MsgInfo("Data has been serialized");
+                        Logger.Info("Data has been serialized");
                     }
                 }
                 GUILayout.EndHorizontal();
-                Logger.Gui();
+                LoggerGUI.Gui();
                 GUI.enabled = true;
             }
 
@@ -75,17 +72,6 @@ namespace AvatarAnimator
         }
 
 
-        private static readonly string LayerName = "AvatarAnimator";
-        private static readonly string TransitionInputsSeparator = ";";
-        private static readonly string InputTypeSeparator = ":";
-        private static readonly string SecondaryInputSeparator = "+";
-        private static readonly Regex isRandomType = new(@"Random\((?:(\d+)|(\d+),[ ]*(\d+))\)", RegexOptions.IgnoreCase);
-        private static readonly string isHealth = "Health";
-        private static readonly string isInput = "Input=";
-        private static readonly string isTimer = "Timer";
-        private static readonly string isWaitEndClip = "WaitEndClip";
-        private static readonly Regex isCyclic = new(@"Cyclic\((\d+)\)", RegexOptions.IgnoreCase);
-
         private AvatarAnimatorData CollectData()
         {
             AvatarAnimatorData data = new()
@@ -97,16 +83,16 @@ namespace AvatarAnimator
             int layerIndex = -1;
             if (anim.runtimeAnimatorController is AnimatorController ac)
             {
-                Logger.Msg($"Layer: '{LayerName}'");
                 foreach (AnimatorControllerLayer layer in ac.layers)
                 {
+                    Logger.Msg($"Layer: '{layer.name}'");
                     layerIndex += 1;
-                    if (!layer.name.StartsWith(LayerName, StringComparison.CurrentCultureIgnoreCase)) continue;
+                    if (!layer.name.StartsWith(Const.LayerName, StringComparison.CurrentCultureIgnoreCase)) continue;
                     AnimatorStateMachine stateMachine = layer.stateMachine;
                     LayerData layerData = new()
                     {
-                        Name = LayerName,
-                        StartState = stateMachine.defaultState.name,
+                        Name = layer.name,
+                        StartState = stateMachine?.defaultState?.name ?? "",
                         LayerIndex = layerIndex,
                         States = new(),
                     };
@@ -154,11 +140,11 @@ namespace AvatarAnimator
                 }
                 if (0 == data.ListLayer.Count)
                 {
-                    Logger.MsgErr($"Animator must have a Layer name '{LayerName}' with states");
+                    Logger.Err($"Animator must have at least one Layer named '{Const.LayerName}' with states");
                 }
             }
-            else { Logger.MsgErr("Animator must have a Controller"); }
-            Logger.MsgInfo($"AvatarAnimatorDataContainer updated");
+            else { Logger.Err("Animator must have a Controller"); }
+            Logger.Info($"AvatarAnimatorDataContainer updated");
             return data;
         }
 
@@ -167,15 +153,15 @@ namespace AvatarAnimator
             input = input.Replace(" ", "");
             ConditionInput tInput = new();
             bool valide = true;
-            var typeAndInput = input.Split(InputTypeSeparator, StringSplitOptions.RemoveEmptyEntries);
+            var typeAndInput = input.Split(Const.InputTypeSeparator, StringSplitOptions.RemoveEmptyEntries);
             try
             {
                 var type = Enum.Parse<InputType>(typeAndInput[0]);
                 string name = typeAndInput[1];
                 string name2 = "";
-                if (name.Contains(SecondaryInputSeparator))
+                if (name.Contains(Const.SecondaryInputSeparator))
                 {
-                    var inputs = name.Split(SecondaryInputSeparator);
+                    var inputs = name.Split(Const.SecondaryInputSeparator);
                     name = inputs[0];
                     name2 = inputs[1];
                 }
@@ -203,7 +189,7 @@ namespace AvatarAnimator
                         }
                         break;
                     default:
-                        Logger.MsgErr($"Valide types are '{InputType.Keyboard}', '{InputType.Controller}'");
+                        Logger.Err($"Valide types are '{InputType.Keyboard}', '{InputType.Controller}'");
                         valide = false;
                         break;
                 }
@@ -212,8 +198,8 @@ namespace AvatarAnimator
             {
                 if ("" != typeAndInput[0])
                 {
-                    Logger.MsgErr("ErrorMessage: " + e.Message);
-                    Logger.MsgErr($"'{input}' doesn't have a valide InputType. '{typeAndInput[0]}' (<InputType>:<InputKey>)");
+                    Logger.Err("ErrorMessage: " + e.Message);
+                    Logger.Err($"'{input}' doesn't have a valide InputType. '{typeAndInput[0]}' (<InputType>:<InputKey>)");
                     LogInputHelp();
                 }
 
@@ -222,7 +208,7 @@ namespace AvatarAnimator
 
             if (!valide)
             {
-                Logger.MsgErr($"'{input}' is not valid (name:'{tInput.InputName}' code:{tInput.KeyCode} name2:'{tInput.InputName2}' code2:{tInput.KeyCode2})");
+                Logger.Err($"'{input}' is not valid (name:'{tInput.InputName}' code:{tInput.KeyCode} name2:'{tInput.InputName2}' code2:{tInput.KeyCode2})");
                 tInput.Type = InputType.Unset;
             }
             return tInput;
@@ -234,7 +220,7 @@ namespace AvatarAnimator
             try { return Enum.Parse<KeyCode>(name, true); }
             catch (Exception)
             {
-                Logger.MsgErr($"'{name}' in '{input}' is not a valide keyboard Key");
+                Logger.Err($"'{name}' in '{input}' is not a valide keyboard Key");
                 return KeyCode.None;
             }
         }
@@ -245,10 +231,12 @@ namespace AvatarAnimator
             try { return Enum.Parse<ControllerInputs>(name, true); }
             catch (Exception)
             {
-                Logger.MsgErr($"'{name}' in '{input}' is not a valide Controller input");
+                Logger.Err($"'{name}' in '{input}' is not a valide Controller input");
                 return ControllerInputs.None;
             }
         }
+
+        public static ConditionMode ToConditionMode(AnimatorConditionMode mode) => Enum.Parse<ConditionMode>(mode.ToString(), true);
 
         private Pair<TransitionCondition, TransitionConditionData> ToTransitionCondition(AnimatorCondition cond)
         {
@@ -259,10 +247,10 @@ namespace AvatarAnimator
             };
             TransitionConditionData d = null;
 
-            if (isRandomType.Match(cond.parameter) is { Success: true } rand)
+            if (Const.IsRandomType.Match(cond.parameter) is { Success: true } rand)
             {
                 c.Type = ConditionType.Random;
-                c.Mode = Utils.ToConditionMode(cond.mode);
+                c.Mode = ToConditionMode(cond.mode);
                 c.Threshold = cond.threshold;
                 d = new()
                 {
@@ -277,53 +265,53 @@ namespace AvatarAnimator
                     d.Min = int.Parse(rand.Groups[2].Value);
                     d.Max = int.Parse(rand.Groups[3].Value);
                 }
-                if ((d.Min) < cond.threshold || cond.threshold < d.Max)
-                    Logger.MsgErr($"Random value must be between defined values");
-                if ((d.Min) > d.Max)
-                    Logger.MsgErr($"Random max must be greater that min");
+                if (d.Min > cond.threshold || cond.threshold > d.Max)
+                    Logger.Err($"Random value must be between defined values (min:{d.Min}, max:{d.Max} value:{cond.threshold})");
+                if (d.Min > d.Max)
+                    Logger.Err($"Random max must be greater that min (min:{d.Min}, max:{d.Max})");
             }
-            else if (cond.parameter.Equals(isHealth, StringComparison.CurrentCultureIgnoreCase))
+            else if (cond.parameter.Equals(Const.IsHealth, StringComparison.CurrentCultureIgnoreCase))
             {
                 c.Type = ConditionType.Health;
-                c.Mode = Utils.ToConditionMode(cond.mode);
+                c.Mode = ToConditionMode(cond.mode);
                 c.Threshold = cond.threshold;
                 if (c.Mode != ConditionMode.Greater && c.Mode != ConditionMode.Less)
-                    Logger.MsgErr($"Health must be a float and use Greater or Less");
-                if (0.0f < cond.threshold || cond.threshold < 1.0f)
-                    Logger.MsgErr($"Health value must be between 0 and 1");
+                    Logger.Err($"Health must be a float and use Greater or Less");
+                if (0.0f > cond.threshold || cond.threshold > 1.0f)
+                    Logger.Err($"Health value must be between 0 and 1");
             }
-            else if (cond.parameter.StartsWith(isInput, StringComparison.CurrentCultureIgnoreCase))
+            else if (cond.parameter.StartsWith(Const.IsInput, StringComparison.CurrentCultureIgnoreCase))
             {
                 c.Type = ConditionType.Input;
-                var inputs = cond.parameter.Substring(isInput.Length);
+                var inputs = cond.parameter.Substring(Const.IsInput.Length);
                 d = new()
                 {
                     Inputs = new(),
                     Type = c.Type,
                 };
-                foreach (string input in inputs.Split(TransitionInputsSeparator))
+                foreach (string input in inputs.Split(Const.TransitionInputsSeparator))
                 {
                     var tInput = ToTransitionInput(input);
                     if (InputType.Unset == tInput.Type) continue;
                     d.Inputs.Add(tInput);
                 }
             }
-            else if (cond.parameter.StartsWith(isTimer, StringComparison.CurrentCultureIgnoreCase))
+            else if (cond.parameter.StartsWith(Const.IsTimer, StringComparison.CurrentCultureIgnoreCase))
             {
                 c.Type = ConditionType.Timer;
-                c.Mode = Utils.ToConditionMode(cond.mode);
+                c.Mode = ToConditionMode(cond.mode);
                 c.Threshold = cond.threshold;
                 if (c.Mode != ConditionMode.Greater)
-                    Logger.MsgErr($"Timer must only use Greater to work");
+                    Logger.Err($"Timer must only use Greater to work");
             }
-            else if (cond.parameter.StartsWith(isWaitEndClip, StringComparison.CurrentCultureIgnoreCase))
+            else if (cond.parameter.StartsWith(Const.IsWaitEndClip, StringComparison.CurrentCultureIgnoreCase))
             {
                 c.Type = ConditionType.WaitEndClip;
             }
-            else if (isCyclic.Match(cond.parameter) is { Success: true } cycle)
+            else if (Const.IsCyclic.Match(cond.parameter) is { Success: true } cycle)
             {
                 c.Type = ConditionType.Cyclic;
-                c.Mode = Utils.ToConditionMode(cond.mode);
+                c.Mode = ToConditionMode(cond.mode);
                 c.Threshold = cond.threshold;
                 d = new()
                 {
@@ -331,15 +319,15 @@ namespace AvatarAnimator
                 };
                 d.Max = int.Parse(cycle.Groups[1].Value);
                 if (0 > d.Max)
-                    Logger.MsgErr($"Cyclic value must greater that 0");
+                    Logger.Err($"Cyclic value must greater that 0");
                 if (c.Mode != ConditionMode.Equals)
-                    Logger.MsgWarn($"Cyclic should only use Equals");
+                    Logger.Warn($"Cyclic should only use Equals");
             }
 
             if (ConditionType.Unset == c.Type)
             {
-                Logger.MsgErr($"Unknown condition {cond.parameter}");
-                Logger.MsgInfo($"'Random(5)', 'Random(0,5)', '{isHealth}', '{isInput}...', '{isTimer}'");
+                Logger.Err($"Unknown condition {cond.parameter}");
+                Logger.Info($"'Random(5)', 'Random(0,5)', '{Const.IsHealth}', '{Const.IsInput}...', '{Const.IsTimer}'");
                 return null;
             }
             return new(c, d);
@@ -358,81 +346,4 @@ namespace AvatarAnimator
     }
 }
 
-
-namespace AvatarAnimator
-{
-    public class GuiLogger
-    {
-        private readonly List<string> logs = new();
-
-        public void Reset() => logs.Clear();
-
-        public void Msg(string msg) => logs.Add(msg);
-        public void MsgInfo(string msg) => logs.Add("<color=cyan>" + msg + "</color>");
-        public void MsgWarn(string msg) => logs.Add("<color=yellow>" + msg + "</color>");
-        public void MsgErr(string msg) => logs.Add("<color=red>" + msg + "</color>");
-
-        private Vector2 gui_scrollPosition;
-        private float gui_scrollViewHeight = 160f;
-        private bool gui_isResizing;
-        private Rect gui_resizerRect;
-        public void Gui()
-        {
-            gui_scrollPosition = EditorGUILayout.BeginScrollView(gui_scrollPosition, GUILayout.ExpandWidth(true), GUILayout.Height(gui_scrollViewHeight));
-            GUIStyle style = new();
-            style.richText = true;
-            style.normal.textColor = Color.white;
-            foreach (var log in logs)
-            {
-                GUILayout.TextArea(log, style);
-            }
-            EditorGUILayout.EndScrollView();
-
-            // Barre de redimensionnement
-            gui_resizerRect = GUILayoutUtility.GetRect(gui_resizerRect.width, 5f);
-            EditorGUIUtility.AddCursorRect(gui_resizerRect, MouseCursor.ResizeVertical);
-            GUI.Box(gui_resizerRect, "", "WindowBottomResize");
-
-            // Gestion logique du redimensionnement
-            Event e = Event.current;
-            if (e.type == EventType.MouseDown && gui_resizerRect.Contains(e.mousePosition)) gui_isResizing = true;
-            if (gui_isResizing)
-            {
-                gui_scrollViewHeight = Mathf.Clamp(e.mousePosition.y, 50f, 400f);
-            }
-            if (e.type == EventType.MouseUp) gui_isResizing = false;
-        }
-    }
-}
-
-
-namespace AvatarAnimator
-{
-    public class Utils
-    {
-        public static ConditionMode ToConditionMode(AnimatorConditionMode mode) => Enum.Parse<ConditionMode>(mode.ToString(), true);
-
-        public static int FloatToInt(float v) => (int)Math.Round(v);
-
-        public static string ToStringAllEnumValues<T>()
-        {
-            string str = "[";
-            var array = Enum.GetValues(typeof(T));
-            T last = (T)array.GetValue(array.Length - 1);
-            foreach (T e in array)
-            {
-                str += e.ToString() + (last.Equals(e) ? "" : ",");
-            }
-            return str + "]";
-        }
-    }
-
-    public class Pair<T, U>
-    {
-        public Pair() { }
-        public Pair(T first, U second) { First = first; Second = second; }
-        public T First { get; set; }
-        public U Second { get; set; }
-    };
-}
 #endif // UNITY_EDITOR

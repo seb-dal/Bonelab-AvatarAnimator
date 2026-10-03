@@ -76,7 +76,8 @@ namespace AvatarAnimator.FusionLab
             if (!m_player.IsValid) return;
             foreach (var layer in m_player.Data.ListLayer)
             {
-                m_States.Add(layer.LayerIndex, new(layer.LayerIndex, layer.StartState));
+                if ("" != layer.StartState)
+                    m_States.Add(layer.LayerIndex, new(layer.LayerIndex, layer.StartState));
             }
         }
 

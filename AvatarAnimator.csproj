@@ -282,7 +282,7 @@
 	</ItemGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-		<DefineConstants>TRACE;ENABLE_MOD</DefineConstants>
+		<DefineConstants>TRACE;IS_AVATAR_ANIMATOR_CORE_MOD</DefineConstants>
 	</PropertyGroup>
 
 	<UsingTask TaskName="PostBuildScript" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
