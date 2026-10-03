@@ -6,6 +6,8 @@ using UnityEngine;
 
 namespace AvatarAnimator
 {
+    public delegate byte PlayerIdGetterFunc(RigManager rig);
+
     public enum EntityDataSources
     {
         Invalid,
@@ -22,6 +24,9 @@ namespace AvatarAnimator
         protected EntityDataSources m_Source;
         protected Mirror m_Mirror = null;
         protected byte m_id;
+
+        /// <summary> Override by FusionLab Integration </summary>
+        public static PlayerIdGetterFunc GetPlayerId = (RigManager _) => 0;
 
         public EntityData() { }
         public static EntityData Create()
@@ -47,7 +52,7 @@ namespace AvatarAnimator
         {
             try
             {
-                data.m_id = Utils.GetPlayerId(data.m_RigManager);
+                data.m_id = GetPlayerId(data.m_RigManager);
             }
             catch (Exception e)
             {

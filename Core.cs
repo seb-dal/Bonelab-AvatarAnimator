@@ -8,8 +8,8 @@ namespace AvatarAnimator
         public const string Name = "AvatarAnimator";
         public const string Author = "Daedalus";
         public const string Company = "";
-        public const string Version = "1.0.0";
-        public const string DownloadLink = "";
+        public const string Version = "1.0.1";
+        public const string DownloadLink = "https://thunderstore.io/c/bonelab/p/Daedalus/AvatarAnimator/";
         public const uint ConsoleColorRGB = 0x008000;
     }
 

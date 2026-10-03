@@ -22,7 +22,7 @@ namespace AvatarAnimator.FusionLab
         protected override void OnModuleRegistered()
         {
             Logger.Msg("AvatarAnimatorFusionModule registered");
-            Utils.GetPlayerId = (RigManager rig) =>
+            EntityData.GetPlayerId = (RigManager rig) =>
             {
                 if (!isOnline) return 0;
                 if (NetworkPlayerManager.TryGetPlayer(rig, out var player))
