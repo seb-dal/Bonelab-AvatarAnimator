@@ -144,7 +144,7 @@ namespace AvatarAnimator
                 }
             }
             // Set back the Player state before level change
-            foreach (var layer in PlayerAnimatorCore.Layers)
+            foreach (var (index, layer) in PlayerAnimatorCore.Layers)
             {
                 PlayState(layer.m_LayerIndex, layer.m_CurrentStateName, time: layer.m_startAt, updateValues: false);
             }
@@ -160,7 +160,7 @@ namespace AvatarAnimator
 
             if (!IsValid) return;
             // Set the Mirror entity States
-            foreach (var layer in PlayerAnimatorCore.Layers)
+            foreach (var (index, layer) in PlayerAnimatorCore.Layers)
             {
                 var state = m_player.Animator.GetCurrentAnimatorStateInfo(layer.m_LayerIndex);
                 data.Animator.Play(layer.m_CurrentStateName, layer.m_LayerIndex, state.normalizedTime);
@@ -229,10 +229,10 @@ namespace AvatarAnimator
         {
             List<PlayerStateChange> states = new();
             if (!IsValid) return states;
-            foreach (var state in PlayerAnimatorCore.Layers)
+            foreach (var (index, layer) in PlayerAnimatorCore.Layers)
             {
-                var st = m_player.Animator.GetCurrentAnimatorStateInfo(state.m_LayerIndex);
-                states.Add(new(state.m_LayerIndex, state.m_CurrentStateName, st.length, st.m_Speed, st.m_NormalizedTime));
+                var st = m_player.Animator.GetCurrentAnimatorStateInfo(layer.m_LayerIndex);
+                states.Add(new(layer.m_LayerIndex, layer.m_CurrentStateName, st.length, st.m_Speed, st.m_NormalizedTime));
             }
             return states;
         }
