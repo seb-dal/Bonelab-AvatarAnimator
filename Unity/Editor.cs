@@ -13,20 +13,21 @@ namespace AvatarAnimator
     public class AvatarAnimatorDataEditor : Editor
     {
         AvatarAnimatorDataContainer container;
-        public Animator anim;
+        public Animator m_anim;
+        public AvatarAnimatorData m_Data;
 
         private void OnEnable()
         {
             container = (AvatarAnimatorDataContainer)target;
-            anim = container.GetComponent<Animator>();
+            m_anim = container.GetComponent<Animator>();
         }
         public override void OnInspectorGUI()
         {
             if (!PrefabUtility.IsPartOfPrefabAsset(container.gameObject))
             {
-                anim = (Animator)EditorGUILayout.ObjectField(anim, typeof(Animator), true);
-                GUILayout.Label("" == container.m_Version ? $"No data found" : $"Data found, version:'{container.m_Version}' generated:'{container.m_Data.Date}'");
-                GUI.enabled = null != anim;
+                m_anim = (Animator)EditorGUILayout.ObjectField(m_anim, typeof(Animator), true);
+                GUILayout.Label("" == container.m_Version ? $"No data found" : $"Data found, version:'{container.m_Version}' generated:'{m_Data?.Date}'");
+                GUI.enabled = null != m_anim;
                 GUILayout.BeginHorizontal();
                 if (GUILayout.Button("How To Use"))
                 {
@@ -36,25 +37,25 @@ namespace AvatarAnimator
                 if (GUILayout.Button("Populate Data"))
                 {
                     LoggerGUI.Reset();
-                    container.m_Data = null;
+                    m_Data = null;
                     container.m_SerializeData = null;
                     try
                     {
-                        container.PopulateData(anim, CollectData());
+                        m_Data = CollectData(m_anim);
                     }
                     catch (Exception e) { Logger.Err(e.ToString()); }
                 }
-                if (null != container.m_Data)
+                if (null != m_Data)
                 {
                     if (GUILayout.Button("Test Data"))
                     {
                         LoggerGUI.Reset();
-                        Logger.Msg(JsonConvert.SerializeObject(container.m_Data, Formatting.Indented));
+                        Logger.Msg(JsonConvert.SerializeObject(m_Data, Formatting.Indented));
                     }
                     if (GUILayout.Button("Serialize Data"))
                     {
                         LoggerGUI.Reset();
-                        container.SerializeData();
+                        container.PopulateData(m_anim, JsonConvert.SerializeObject(m_Data, Formatting.None));
                         Logger.Info("Data has been serialized");
                     }
                 }
@@ -66,13 +67,13 @@ namespace AvatarAnimator
             DrawDefaultInspector();
         }
 
-        public void Help()
+        public static void Help()
         {
             Application.OpenURL("https://github.com/seb-dal/Bonelab-AvatarAnimator/wiki/How-to-use-in-Unity");
         }
 
 
-        private AvatarAnimatorData CollectData()
+        public static AvatarAnimatorData CollectData(Animator anim)
         {
             AvatarAnimatorData data = new()
             {
@@ -148,7 +149,7 @@ namespace AvatarAnimator
             return data;
         }
 
-        private ConditionInput ToTransitionInput(string input)
+        private static ConditionInput ToTransitionInput(string input)
         {
             input = input.Replace(" ", "");
             ConditionInput tInput = new();
@@ -214,7 +215,7 @@ namespace AvatarAnimator
             return tInput;
         }
 
-        private KeyCode ParseKeyCode(string input, string name, bool isSecondary = false)
+        private static KeyCode ParseKeyCode(string input, string name, bool isSecondary = false)
         {
             if ("" == name && isSecondary) return KeyCode.None;
             try { return Enum.Parse<KeyCode>(name, true); }
@@ -225,7 +226,7 @@ namespace AvatarAnimator
             }
         }
 
-        private ControllerInputs ParseControllerInputs(string input, string name, bool isSecondary = false)
+        private static ControllerInputs ParseControllerInputs(string input, string name, bool isSecondary = false)
         {
             if ("" == name && isSecondary) return ControllerInputs.None;
             try { return Enum.Parse<ControllerInputs>(name, true); }
@@ -238,7 +239,7 @@ namespace AvatarAnimator
 
         public static ConditionMode ToConditionMode(AnimatorConditionMode mode) => Enum.Parse<ConditionMode>(mode.ToString(), true);
 
-        private Pair<TransitionCondition, TransitionConditionData> ToTransitionCondition(AnimatorCondition cond)
+        private static Pair<TransitionCondition, TransitionConditionData> ToTransitionCondition(AnimatorCondition cond)
         {
             TransitionCondition c = new()
             {
@@ -333,7 +334,7 @@ namespace AvatarAnimator
             return new(c, d);
         }
 
-        private void LogInputHelp()
+        private static void LogInputHelp()
         {
             Logger.Msg("Input=<Type>:<Key1>(+<Key2>);<Type>:<Key>");
             Logger.Msg($"<Type>: '{InputType.Keyboard}', '{InputType.Controller}'");

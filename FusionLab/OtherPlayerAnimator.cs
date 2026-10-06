@@ -84,6 +84,7 @@ namespace AvatarAnimator.FusionLab
         public void AddMirror(EntityData data)
         {
             m_mirrorAnimators.Add(data);
+            data.UpdateAvatar();
 
             if (!m_player.IsValid) return;
             foreach (var layer in m_States)
@@ -111,6 +112,7 @@ namespace AvatarAnimator.FusionLab
             data.m_PlayerId = id;
             data.m_NetworkPlayer = player;
             data.m_RigManager = player.RigRefs.RigManager;
+            data.SetBarcode();
             data.m_id = data.m_PlayerId.SmallID;
             data.UpdateAvatar();
             return data;

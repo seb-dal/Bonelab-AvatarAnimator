@@ -24,6 +24,15 @@ namespace AvatarAnimator
         public void Update() { OnUpdate?.Invoke(); }
     }
 
+    public class AvatarContainer
+    {
+        public readonly AvatarAnimatorDataContainer m_cont;
+        public AvatarAnimatorData m_Data;
+
+        public AvatarContainer(AvatarAnimatorDataContainer cont) { m_cont = cont; }
+        public Animator m_Animator { get => m_cont.m_Animator; }
+    }
+
     [CustomEditor(typeof(AvatarAnimatorTestScript))]
     [DisallowMultipleComponent]
     public class AvatarAnimatorTestEditor : Editor
@@ -32,7 +41,7 @@ namespace AvatarAnimator
 
         AvatarAnimatorTestScript container;
 
-        private readonly List<AvatarAnimatorDataContainer> m_avatars = new();
+        private readonly List<AvatarContainer> m_avatars = new();
         private readonly List<string> m_avatarsName = new();
         private string[] avatarsName = new string[] { };
         private List<string> m_currAvName;
@@ -53,24 +62,14 @@ namespace AvatarAnimator
         public void Start()
         {
             m_avatars.Clear();
-            m_avatars.AddRange(GameObject.FindObjectsOfType<AvatarAnimatorDataContainer>());
             m_avatarsName.Clear();
-            foreach (var avatar in m_avatars)
+
+            foreach (var avatar in GameObject.FindObjectsOfType<AvatarAnimatorDataContainer>())
             {
-                AvatarAnimatorData tmp = null;
-                if ("" != avatar.m_SerializeData) tmp = JsonConvert.DeserializeObject<AvatarAnimatorData>(avatar.m_SerializeData);
-                bool avatarData = null != avatar.m_Data?.ListLayer;
-                if (avatarData && avatar.m_Data?.ListLayer.Count > 0)
-                {
-                    var tmpLay = avatar.m_Data?.ListLayer[0];
-                    avatarData = null != tmpLay.States;
-                }
-                if (avatarData || null != tmp) m_avatarsName.Add(avatar.name);
-                if (avatarData && null != tmp)
-                {
-                    if (DateTime.Parse(tmp.Date) > DateTime.Parse(avatar.m_Data.Date)) { avatar.m_Data = tmp; }
-                }
-                else if (!avatarData && null != tmp) { avatar.m_Data = tmp; }
+                AvatarContainer c = new(avatar);
+                m_avatars.Add(c);
+                c.m_Data = AvatarAnimatorDataEditor.CollectData(c.m_cont.m_Animator);
+                m_avatarsName.Add(avatar.name);
             }
 
             PlayerAnimatorCore.OnStateChange += (int layer, string state, bool playState) =>
@@ -98,7 +97,7 @@ namespace AvatarAnimator
         {
             SelectedIndex = index;
             var avatar = m_avatars[index];
-            PlayerAnimatorCore.SetAvatar(avatar.m_Animator, avatar.m_Data);
+            PlayerAnimatorCore.SetAvatar(avatar.m_cont.m_Animator, avatar.m_Data);
             PlayerAnimatorCore.Clear();
             PlayerAnimatorCore.Initialize();
 

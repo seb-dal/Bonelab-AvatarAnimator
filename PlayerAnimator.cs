@@ -70,7 +70,7 @@ namespace AvatarAnimator
         private static void SetPlayer(EntityData player)
         {
             m_player = player;
-            PlayerAnimatorCore.SetAvatar(m_player.Animator, m_player.Container.m_Data);
+            PlayerAnimatorCore.SetAvatar(m_player.Animator, m_player.Data);
         }
 
         private static void AvatarChange(EntityData player)
@@ -157,6 +157,7 @@ namespace AvatarAnimator
             if (data.Id != m_player.Id) return;
             Logger.Dbg?.Info($"Add Mirror to Player");
             m_mirrorAnimators.Add(data);
+            data.UpdateAvatar();
 
             if (!IsValid) return;
             // Set the Mirror entity States

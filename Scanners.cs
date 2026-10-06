@@ -18,6 +18,7 @@ namespace AvatarAnimator
     public class EntityData
     {
         protected AvatarAnimatorDataContainer m_Cont;
+        protected AvatarAnimatorData m_Data = null;
         protected Il2CppSLZ.VRMK.Avatar m_Avatar;
         protected RigManager m_RigManager;
         protected Barcode m_Barcode;
@@ -34,7 +35,8 @@ namespace AvatarAnimator
             EntityData data = new();
             data.m_Source = EntityDataSources.Player;
             data.m_RigManager = Player.RigManager;
-            SetId(ref data);
+            data.SetBarcode();
+            data.SetId();
             data.UpdateAvatar();
             return data;
         }
@@ -44,27 +46,16 @@ namespace AvatarAnimator
             data.m_Source = EntityDataSources.Mirror;
             data.m_Mirror = mirror;
             data.m_RigManager = mirror.rigManager;
-            SetId(ref data);
-            data.UpdateAvatar();
+            data.SetBarcode();
+            data.SetId();
+            //data.UpdateAvatar();
             return data;
-        }
-        private static void SetId(ref EntityData data)
-        {
-            try
-            {
-                data.m_id = GetPlayerId(data.m_RigManager);
-            }
-            catch (Exception e)
-            {
-                Logger.Dbg?.Warn(e.ToString());
-                data.m_Source = EntityDataSources.Invalid;
-            }
         }
 
         public AvatarAnimatorDataContainer Container { get => m_Cont; }
         public Animator Animator { get => m_Cont.m_Animator; }
-        public AvatarAnimatorData Data { get => m_Cont.m_Data; }
-        public bool HasAvatarAnimatorData { get => null != m_Cont?.m_Data; }
+        public AvatarAnimatorData Data { get => m_Data; }
+        public bool HasAvatarAnimatorData { get => null != m_Cont && null != m_Data; }
         public Il2CppSLZ.VRMK.Avatar Avatar { get => m_Avatar; }
         public RigManager RigManager { get => m_RigManager; }
         public Barcode Barcode { get => m_Barcode; }
@@ -87,25 +78,42 @@ namespace AvatarAnimator
             };
         }
 
+        protected virtual void SetBarcode() { m_Barcode = m_RigManager?.AvatarCrate?.Barcode; }
+        protected virtual void SetId()
+        {
+            try
+            {
+                m_id = GetPlayerId(m_RigManager);
+            }
+            catch (Exception e)
+            {
+                Logger.Dbg?.Warn(e.ToString());
+                m_Source = EntityDataSources.Invalid;
+            }
+        }
+
         /// <summary> Update the avatar and the AvatarAnimatorDataContainer if found </summary>
         public void UpdateAvatar()
         {
             SetAvatar();
-            m_Barcode = m_RigManager?.AvatarCrate?.Barcode;
             if (EntityDataSources.Invalid != m_Source)
                 m_Cont = m_Avatar.gameObject.GetComponent<AvatarAnimatorDataContainer>();
             if (null != m_Cont)
             {
                 try
                 {
-                    m_Cont.m_Data = AvatarAnimatorDataDeserializer.Deserialize(m_Cont.m_Version, m_Cont.m_SerializeData);
+                    m_Data = AvatarAnimatorDataDeserializer.Deserialize(m_Cont.m_Version, m_Cont.m_SerializeData);
                     Logger.Msg($"AvatarAnimator '{Barcode.ToString()}' Data found version {m_Cont.m_Version}");
                 }
-                catch (Exception e) { Logger.Warn(e.ToString()); }
+                catch (Exception e)
+                {
+                    Logger.Warn(e.ToString());
+                    m_Data = null;
+                }
                 Logger.Dbg?.Data(m_Cont.m_SerializeData);
             }
 
-            valid = (null != m_Cont && null != m_Cont?.m_Animator);
+            valid = (null != m_Cont && null != m_Cont?.m_Animator && null != m_Data);
             Logger.Dbg?.Info(DebugEntityData());
         }
 
