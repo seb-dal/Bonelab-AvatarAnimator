@@ -52,7 +52,7 @@ namespace AvatarAnimator
             var removed = ListAction.Count;
             foreach (var elem in ListAction) { m_AvatarStatePage.Remove(elem); }
             ListAction.Clear();
-            if (null == player?.Container?.m_Data)
+            if (null == player?.Data)
             {
                 Logger.Dbg?.Info($"MenuUi: No Avatar Animator data");
                 AddButton($"Avatar doesn't have Animation", Color.red, () => { });

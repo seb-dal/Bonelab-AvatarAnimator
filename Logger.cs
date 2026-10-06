@@ -13,7 +13,7 @@ namespace AvatarAnimator
             public void Data(string msg) => Log(ConsoleColor.Magenta, "[Dbg-Data] " + msg);
             public void Info(string msg) => Log(ConsoleColor.Cyan, "[Dbg-Info] " + msg);
             public void Highlight(string msg) => Log(ConsoleColor.DarkRed, "[Dbg-High] " + msg);
-            public void StackTrace() => Log(ConsoleColor.DarkRed, "[StackTrace] " + (new System.Diagnostics.StackTrace()).ToString());
+            public void StackTrace() => Log(ConsoleColor.DarkRed, "[StackTrace] " + (new System.Diagnostics.StackTrace(true)).ToString());
             public void Warn(string msg) => Log(ConsoleColor.Yellow, "[Dbg-W] " + msg);
             public void Err(string msg) => Log(ConsoleColor.Red, "[Dbg-E] " + msg);
         }

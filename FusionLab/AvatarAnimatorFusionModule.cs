@@ -18,6 +18,7 @@ namespace AvatarAnimator.FusionLab
 
         private static readonly Dictionary<byte, OtherPlayerAnimator> players = new();
         private static readonly Dictionary<byte, NetworkPlayer> waitingPlayers = new();
+        private static readonly Dictionary<byte, string> PlayersAvatarName = new();
 
         protected override void OnModuleRegistered()
         {
@@ -70,11 +71,14 @@ namespace AvatarAnimator.FusionLab
             NetworkPlayer.OnNetworkPlayerRegistered -= OnNetworkPlayerRegistered;
         }
 
-        public static void ChangeOtherPlayerState(OtherPlayerStates states)
+        public static bool ChangeOtherPlayerState(OtherPlayerStates states)
         {
-            if (!players.ContainsKey(states.m_smallId)) return;
+            if (!players.ContainsKey(states.m_smallId)) return true;
+            var player = players[states.m_smallId];
+            if (!player.IsValid) return false;
             Logger.Dbg?.Info("Change other Player animator state");
-            players[states.m_smallId].SetAnimatorState(states);
+            player.SetAnimatorState(states);
+            return true;
         }
 
         public static NetworkPlayer FindPlayer(FindFunc<NetworkPlayer> func)
@@ -92,7 +96,7 @@ namespace AvatarAnimator.FusionLab
         {
             if (!players.ContainsKey(data.Id)) return;
             var other = players[data.Id];
-            if (other.IsMe()) return;
+            if (other.IsMe) return;
             Logger.Dbg?.Info($"Add Mirror to Other Player {data.Id}");
             other.AddMirror(data);
         }
@@ -150,6 +154,7 @@ namespace AvatarAnimator.FusionLab
             {
                 case PlayerMetadataChangedKeys.AvatarTitle:
                     {
+                        Utils.AddOrReplace(PlayersAvatarName, playerId.SmallID, value);
                         if (IsLevelLoading) return;
                         if (!players.ContainsKey(playerId.SmallID)) return;
                         if (playerId.IsMe)
@@ -165,6 +170,7 @@ namespace AvatarAnimator.FusionLab
                                 players[playerId.SmallID].OnAvatarChanged();
                             });
                         }
+                        HandleWaitingMessage();
                     }
                     break;
                 case PlayerMetadataChangedKeys.Loading:
@@ -172,24 +178,56 @@ namespace AvatarAnimator.FusionLab
                         if (!playerId.IsMe) return;
                         m_levelLoading = (Const.True == value);
                         Logger.Dbg?.Info($"Level loading = {IsLevelLoading}");
-                        if (!IsLevelLoading)
+                        if (IsLevelLoading) return;
+
+                        UpdateSystem.CallLaterOnce(() =>
                         {
-                            PlayerScanner.GetAvatarAnimator();
                             if (waitingPlayers.Count > 0)
                             {
                                 foreach (var player in waitingPlayers) { AddOrUpdatePlayer(player.Value); }
+                                waitingPlayers.Clear();
                             }
-                            foreach (var player in players) { player.Value.OnAvatarChanged(); }
 
-                            Logger.Dbg?.Info($"Level finish to loading, use {PlayerStateChangeMessageModule.WaitingList.Count} stored messages");
-                            foreach (var states in PlayerStateChangeMessageModule.WaitingList)
+                            foreach (var (id, name) in PlayersAvatarName)
                             {
-                                ChangeOtherPlayerState(states);
+                                if (Const.PolyBlankAvatar == name) continue;
+                                if (!players.ContainsKey(id)) continue;
+                                var player = players[id];
+                                if (player.IsMe)
+                                {
+                                    Logger.Dbg?.Info($"Player avatar changed");
+                                    CorePrivate.UpdatePlayerAvatar();
+                                }
+                                else
+                                {
+                                    UpdateSystem.CallLaterOnce(() =>
+                                    {
+                                        Logger.Dbg?.Info($"Other Player '{playerId.SmallID}' avatar changed");
+                                        players[playerId.SmallID].OnAvatarChanged();
+                                    });
+                                }
                             }
-                            PlayerStateChangeMessageModule.WaitingList.Clear();
-                        }
+                            HandleWaitingMessage();
+                        });
+
                     }
                     break;
+            }
+        }
+
+        private void HandleWaitingMessage()
+        {
+            if (PlayerStateChangeMessageModule.WaitingList.Count == 0) return;
+
+            Logger.Dbg?.Info($"Level finish to loading, use {PlayerStateChangeMessageModule.WaitingList.Count} stored messages");
+            for (int i = 0; i < PlayerStateChangeMessageModule.WaitingList.Count; i++)
+            {
+                var states = PlayerStateChangeMessageModule.WaitingList[i];
+                if (ChangeOtherPlayerState(states))
+                {
+                    PlayerStateChangeMessageModule.WaitingList.RemoveAt(i);
+                    i -= 1;
+                }
             }
         }
 
@@ -203,15 +241,14 @@ namespace AvatarAnimator.FusionLab
             if (IsLevelLoading)
             {
                 Utils.AddOrReplace(waitingPlayers, player.PlayerID.SmallID, player);
+                return;
             }
-            else
+
+            UpdateSystem.CallLaterOnce(() =>
             {
-                UpdateSystem.CallLaterOnce(() =>
-                {
-                    if (IsLevelLoading) return;
-                    AddOrUpdatePlayer(player);
-                });
-            }
+                if (IsLevelLoading) return;
+                AddOrUpdatePlayer(player);
+            });
         }
         private void OnNetworkPlayerRegistered(NetworkPlayer player)
         {
@@ -219,20 +256,20 @@ namespace AvatarAnimator.FusionLab
             if (IsLevelLoading)
             {
                 Utils.AddOrReplace(waitingPlayers, player.PlayerID.SmallID, player);
+                return;
             }
-            else
-            {
-                UpdateSystem.CallLaterOnce(() =>
-                {
-                    if (IsLevelLoading) return;
-                    AddOrUpdatePlayer(player);
 
-                    if (player.PlayerID.IsMe) return;
-                    var states = PlayerAnimator.GetPlayerStates();
-                    if (states.Count <= 0) return;
-                    PlayerStateChangeMessageModule.SendMessageTo(player.PlayerID.SmallID, new(PlayerAnimator.Id, null, states));
-                });
-            }
+            UpdateSystem.CallLaterOnce(() =>
+            {
+                if (IsLevelLoading) return;
+                AddOrUpdatePlayer(player);
+
+                if (player.PlayerID.IsMe) return;
+                var states = PlayerAnimator.GetPlayerStates();
+                if (states.Count <= 0) return;
+                PlayerStateChangeMessageModule.SendMessageTo(player.PlayerID.SmallID, new(PlayerAnimator.Id, null, states));
+            });
+
         }
         private void AddOrUpdatePlayer(NetworkPlayer player)
         {

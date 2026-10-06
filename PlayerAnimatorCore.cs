@@ -14,27 +14,28 @@ namespace AvatarAnimator
         public class AnimatorLayer
         {
             public readonly int m_LayerIndex;
+            public readonly int m_ListLayerIndex;
+
             public StateNode m_CurrentState = null;
             public string m_CurrentStateName;
+
             public DateTime? m_Transition = null;
             public DateTime? m_ConditionDelayTimer = null;
             public DateTime? m_ConditionDelayWaitEndClip = null;
 
             public DateTime? m_startAt;
 
-            public AnimatorLayer(int layerIndex) { m_LayerIndex = layerIndex; }
+            public AnimatorLayer(int listLayerIndex, int layerIndex) { m_LayerIndex = layerIndex; m_ListLayerIndex = listLayerIndex; }
         }
 
-
-        private static readonly Dictionary<int, int> m_LayerIndexToIndex = new();
-        private static readonly List<AnimatorLayer> m_Layers = new();
-        public static List<AnimatorLayer> Layers => m_Layers;
+        private static readonly Dictionary<int, AnimatorLayer> m_Layers = new();
+        public static Dictionary<int, AnimatorLayer> Layers => m_Layers;
 
         private static Animator m_Animator;
         private static AvatarAnimatorData m_Data;
 
         public static event StateChange OnStateChange;
-        public static PlayerHealthGetterFunc getPlayerHealth = () => 1.0f;
+        public static PlayerHealthGetterFunc GetPlayerHealth = () => 1.0f;
 
 
         public static void SetAvatar(Animator animator, AvatarAnimatorData data)
@@ -43,48 +44,37 @@ namespace AvatarAnimator
             m_Data = data;
         }
 
-        public static bool IsInitialized() => m_LayerIndexToIndex.Count > 0;
+        public static bool IsInitialized() => m_Layers.Count > 0;
+        public static AnimatorLayer GetLayer(int layer) => m_Layers[layer];
 
         public static void Initialize()
         {
             int i = 0;
             foreach (var layer in m_Data.ListLayer)
             {
-                Layers.Add(new(layer.LayerIndex));
-                m_LayerIndexToIndex.Add(layer.LayerIndex, i);
+                m_Layers.Add(layer.LayerIndex, new(i, layer.LayerIndex));
                 if ("" != layer.StartState)
                     OnStateChange?.Invoke(layer.LayerIndex, layer.StartState, false);
                 i += 1;
             }
         }
 
-        public static void Clear()
-        {
-            Layers.Clear();
-            m_LayerIndexToIndex.Clear();
-        }
+        public static void Clear() { m_Layers.Clear(); }
 
         public static AnimatorLayer PlayState(int layer, string state, DateTime? time = null)
         {
-            if (!m_LayerIndexToIndex.ContainsKey(layer)) return null;
+            if (!m_Layers.ContainsKey(layer)) return null;
 
-            int indexLayer = m_LayerIndexToIndex[layer];
-            var layerObj = m_Layers[indexLayer];
+            var layerObj = GetLayer(layer);
             layerObj.m_startAt = time ?? DateTime.Now;
             layerObj.m_CurrentStateName = state;
-            layerObj.m_CurrentState = m_Data.ListLayer[indexLayer].States[state];
+            layerObj.m_CurrentState = m_Data.ListLayer[layerObj.m_ListLayerIndex].States[state];
             return layerObj;
-        }
-
-        public static AnimatorLayer GetState(int layer)
-        {
-            int indexLayer = m_LayerIndexToIndex[layer];
-            return m_Layers[indexLayer];
         }
 
         public static void Update()
         {
-            foreach (var layer in Layers)
+            foreach (var (index, layer) in m_Layers)
             {
                 if (null != layer.m_Transition)
                 {
@@ -98,7 +88,7 @@ namespace AvatarAnimator
                 }
                 foreach (var trans in layer.m_CurrentState.Transitions)
                 {
-                    bool validate = true;
+                    bool validate = false;
                     foreach (var cond in trans.Conditions)
                     {
                         validate = IsConditionValid(layer, cond);
@@ -134,7 +124,7 @@ namespace AvatarAnimator
                     }
                 case ConditionType.Health:
                     {
-                        var healthValue = getPlayerHealth();
+                        var healthValue = GetPlayerHealth();
                         m_Animator.SetFloat(cond.Name, healthValue);
                         return Utils.Is(cond.Mode, healthValue, cond.Threshold);
                     }

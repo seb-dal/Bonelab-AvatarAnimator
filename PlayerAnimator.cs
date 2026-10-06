@@ -38,12 +38,11 @@ namespace AvatarAnimator
 
         private static readonly List<EntityData> m_mirrorAnimators = new();
         private static EntityData m_player = null;
-        private static string m_oldAvatar = "";
 
         /// <summary> Store values for level change </summary>
         private static readonly Dictionary<string, int> m_StoreValues = new();
 
-        public static bool IsValid { get => null != m_player?.Container && m_player.IsValid; }
+        public static bool IsValid { get => null != m_player?.Data && m_player.IsValid; }
         public static byte Id { get => m_player.Id; }
 
         public static void Initialize()
@@ -53,7 +52,7 @@ namespace AvatarAnimator
             MirrorScanner.OnNew += AddMirror;
             MirrorScanner.OnRemoved += RemoveMirror;
             MirrorScanner.OnClear += ClearMirrors;
-            PlayerAnimatorCore.getPlayerHealth = () =>
+            PlayerAnimatorCore.GetPlayerHealth = () =>
             {
                 var health = Player.RigManager.health;
                 float healthValue = health.curr_Health / health.max_Health;
@@ -70,26 +69,16 @@ namespace AvatarAnimator
         private static void SetPlayer(EntityData player)
         {
             m_player = player;
-            PlayerAnimatorCore.SetAvatar(m_player.Animator, m_player.Container.m_Data);
+            PlayerAnimatorCore.SetAvatar(m_player.Animator, m_player.Data);
+            Logger.Dbg?.Info($"IsValid:{null != m_player?.Container} && {m_player.IsValid}   {null != m_player.Animator} {null != m_player.Data} {PlayerAnimatorCore.Layers.Count}");
         }
 
         private static void AvatarChange(EntityData player)
         {
             Logger.Dbg?.Info("OnAvatarChange");
             PlayerInput.Clear();
-            // Fusion Change the Avatar to PolyBlank when level is loading and shortly after
-            var barcode = player.Barcode.ToString();
-            if (Const.PolyBlankBarcode != barcode)
-            {
-                m_StoreValues.Clear();
-                PlayerAnimatorCore.Clear();
-                m_oldAvatar = barcode;
-            }
-            else if (barcode == m_oldAvatar)
-            {
-                SameAvatar(player);
-                return;
-            }
+            m_StoreValues.Clear();
+            PlayerAnimatorCore.Clear();
 
             SetPlayer(player);
             if (!m_player.HasAvatarAnimatorData)
@@ -144,7 +133,7 @@ namespace AvatarAnimator
                 }
             }
             // Set back the Player state before level change
-            foreach (var layer in PlayerAnimatorCore.Layers)
+            foreach (var (index, layer) in PlayerAnimatorCore.Layers)
             {
                 PlayState(layer.m_LayerIndex, layer.m_CurrentStateName, time: layer.m_startAt, updateValues: false);
             }
@@ -160,7 +149,7 @@ namespace AvatarAnimator
 
             if (!IsValid) return;
             // Set the Mirror entity States
-            foreach (var layer in PlayerAnimatorCore.Layers)
+            foreach (var (index, layer) in PlayerAnimatorCore.Layers)
             {
                 var state = m_player.Animator.GetCurrentAnimatorStateInfo(layer.m_LayerIndex);
                 data.Animator.Play(layer.m_CurrentStateName, layer.m_LayerIndex, state.normalizedTime);
@@ -229,10 +218,10 @@ namespace AvatarAnimator
         {
             List<PlayerStateChange> states = new();
             if (!IsValid) return states;
-            foreach (var state in PlayerAnimatorCore.Layers)
+            foreach (var (index, layer) in PlayerAnimatorCore.Layers)
             {
-                var st = m_player.Animator.GetCurrentAnimatorStateInfo(state.m_LayerIndex);
-                states.Add(new(state.m_LayerIndex, state.m_CurrentStateName, st.length, st.m_Speed, st.m_NormalizedTime));
+                var st = m_player.Animator.GetCurrentAnimatorStateInfo(layer.m_LayerIndex);
+                states.Add(new(layer.m_LayerIndex, layer.m_CurrentStateName, st.length, st.m_Speed, st.m_NormalizedTime));
             }
             return states;
         }

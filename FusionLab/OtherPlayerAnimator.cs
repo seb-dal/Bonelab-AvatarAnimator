@@ -95,7 +95,8 @@ namespace AvatarAnimator.FusionLab
         }
         public void RemoveMirror(EntityData data) { m_mirrorAnimators.Remove(data); }
         public void ClearMirrors() { m_mirrorAnimators.Clear(); }
-        public bool IsMe() => m_player.IsMe();
+        public bool IsMe { get => null != m_player?.Data && m_player.IsValid; }
+        public bool IsValid { get => m_player.IsValid; }
     }
 
     public class OtherPlayerData : EntityData
@@ -116,7 +117,7 @@ namespace AvatarAnimator.FusionLab
             return data;
         }
 
-        public bool IsMe() => m_PlayerId.IsMe;
+        public bool IsMe { get => m_PlayerId.IsMe; }
         protected override void SetAvatar() { m_Avatar = m_RigManager.avatar; }
     }
 }

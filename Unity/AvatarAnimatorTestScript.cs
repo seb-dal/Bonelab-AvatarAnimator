@@ -1,7 +1,6 @@
 using System;
 using UnityEngine;
 using UnityEditor;
-using Newtonsoft.Json;
 using System.Collections.Generic;
 
 #if IS_AVATAR_ANIMATOR_CORE_MOD
@@ -17,51 +16,72 @@ namespace AvatarAnimator
 
 namespace AvatarAnimator
 {
+    public delegate void Action();
     public class AvatarAnimatorTestScript : MonoBehaviour
     {
-        private readonly List<AvatarAnimatorDataContainer> m_avatars = new();
-        public List<AvatarAnimatorDataContainer> Avatars { get => m_avatars; }
+        public static event Action OnUpdate;
+        public void Update() { OnUpdate?.Invoke(); }
+    }
 
+    public class AvatarContainer
+    {
+        public readonly AvatarAnimatorDataContainer m_cont;
+        public AvatarAnimatorData m_Data;
+
+        public AvatarContainer(AvatarAnimatorDataContainer cont) { m_cont = cont; }
+        public Animator m_Animator { get => m_cont.m_Animator; }
+    }
+
+    [CustomEditor(typeof(AvatarAnimatorTestScript))]
+    [DisallowMultipleComponent]
+    public class AvatarAnimatorTestEditor : Editor
+    {
+        private const int AlignButtons = 3;
+
+        AvatarAnimatorTestScript container;
+
+        private readonly List<AvatarContainer> m_avatars = new();
         private readonly List<string> m_avatarsName = new();
-        public List<string> AvatarsName { get => m_avatarsName; }
+        private string[] avatarsName = new string[] { };
+        private List<string> m_currAvName;
 
-        public int m_selectedIndex = 0;
-        public float m_health = 1f;
+        public int SelectedIndex = 0;
+
+        public float Health = 1f;
+        public string HealthRealName = "";
+        public bool HasHealth = false;
+
+        private void OnEnable()
+        {
+            container = (AvatarAnimatorTestScript)target;
+            AvatarAnimatorTestScript.OnUpdate += Update;
+            Start();
+        }
 
         public void Start()
         {
             m_avatars.Clear();
-            m_avatars.AddRange(GameObject.FindObjectsOfType<AvatarAnimatorDataContainer>());
             m_avatarsName.Clear();
-            foreach (var avatar in Avatars)
+
+            foreach (var avatar in GameObject.FindObjectsOfType<AvatarAnimatorDataContainer>())
             {
-                AvatarAnimatorData tmp = null;
-                if ("" != avatar.m_SerializeData) tmp = JsonConvert.DeserializeObject<AvatarAnimatorData>(avatar.m_SerializeData);
-                bool avatarData = null != avatar.m_Data?.ListLayer;
-                if (avatarData && avatar.m_Data?.ListLayer.Count > 0)
-                {
-                    var tmpLay = avatar.m_Data?.ListLayer[0];
-                    avatarData = null != tmpLay.States;
-                }
-                if (avatarData || null != tmp) m_avatarsName.Add(avatar.name);
-                if (avatarData && null != tmp)
-                {
-                    if (DateTime.Parse(tmp.Date) > DateTime.Parse(avatar.m_Data.Date)) { avatar.m_Data = tmp; }
-                }
-                else if (!avatarData && null != tmp) { avatar.m_Data = tmp; }
+                AvatarContainer c = new(avatar);
+                m_avatars.Add(c);
+                c.m_Data = AvatarAnimatorDataEditor.CollectData(c.m_cont.m_Animator);
+                m_avatarsName.Add(avatar.name);
             }
 
             PlayerAnimatorCore.OnStateChange += (int layer, string state, bool playState) =>
             {
                 if (playState)
                 {
-                    var avatar = Avatars[m_selectedIndex];
+                    var avatar = m_avatars[SelectedIndex];
                     avatar.m_Animator.Play(state, layer);
                 }
                 PlayerAnimatorCore.PlayState(layer, state);
             };
 
-            PlayerAnimatorCore.getPlayerHealth = () => m_health;
+            PlayerAnimatorCore.getPlayerHealth = () => Health;
 
             SetActifAvatar(0);
         }
@@ -74,58 +94,58 @@ namespace AvatarAnimator
 
         public void SetActifAvatar(int index)
         {
-            m_selectedIndex = index;
-            var avatar = Avatars[index];
-            PlayerAnimatorCore.SetAvatar(avatar.m_Animator, avatar.m_Data);
+            SelectedIndex = index;
+            var avatar = m_avatars[index];
+            PlayerAnimatorCore.SetAvatar(avatar.m_cont.m_Animator, avatar.m_Data);
             PlayerAnimatorCore.Clear();
             PlayerAnimatorCore.Initialize();
-        }
-    }
 
-    [CustomEditor(typeof(AvatarAnimatorTestScript))]
-    [DisallowMultipleComponent]
-    public class AvatarAnimatorTestEditor : Editor
-    {
-        AvatarAnimatorTestScript container;
-        private string[] avatarsName = new string[] { };
-        private const int AlignButtons = 3;
-
-        private void OnEnable()
-        {
-            container = (AvatarAnimatorTestScript)target;
+            HasHealth = false;
+            foreach (var parms in avatar.m_Animator.parameters)
+            {
+                HasHealth = parms.name.Equals(Const.IsHealth, StringComparison.CurrentCultureIgnoreCase);
+                if (HasHealth)
+                {
+                    Health = 1f;
+                    HealthRealName = parms.name;
+                    avatar.m_Animator.SetFloat(parms.name, 1f);
+                    break;
+                }
+            }
         }
+
         public override void OnInspectorGUI()
         {
-            if (avatarsName?.Length != container.AvatarsName.Count)
+            if (!Utils.ListEquals(m_currAvName, m_avatarsName, (string a, string b) => a == b))
             {
-                avatarsName = container.AvatarsName.ToArray();
+                avatarsName = m_avatarsName.ToArray();
+                m_currAvName = new(avatarsName);
             }
             if (null == container || avatarsName.Length == 0) return;
-            var index = EditorGUILayout.Popup("Avatar", container.m_selectedIndex, avatarsName);
-            var avatar = container.Avatars[index];
 
-            GUILayout.Label($"Avatar Health ({Math.Round(container.m_health * 100)}%)");
-            var health = GUILayout.HorizontalSlider(container.m_health, 0.0f, 1.0f);
-            if (container.m_health != health)
+            if (!EditorApplication.isPlaying)
             {
-                avatar.m_Animator.SetFloat("Health", health);
-                container.m_health = health;
+                GUILayout.Label("Only available in Play Mode");
+                return;
             }
-            GUILayout.Label("");
+
+            var index = EditorGUILayout.Popup("Avatar", SelectedIndex, avatarsName);
+            var avatar = m_avatars[index];
+            GUILayout.Space(20);
 
             GUILayout.Label("Animations");
-            if (container.m_selectedIndex != index) { container.SetActifAvatar(index); }
-
+            if (SelectedIndex != index) { SetActifAvatar(index); }
 
             foreach (var lay in avatar.m_Data.ListLayer)
             {
                 int i = 0;
-                var curr = PlayerAnimatorCore.GetState(lay.LayerIndex);
+                var curr = PlayerAnimatorCore.GetLayer(lay.LayerIndex);
                 foreach (var state in lay.States)
                 {
                     if (i % AlignButtons == 0) GUILayout.BeginHorizontal();
-                    bool res = GUILayout.Toggle(state.Key == curr.m_CurrentStateName, $"{lay.LayerIndex} - {state.Key}");
-                    if (res && state.Key != curr.m_CurrentStateName)
+                    bool current = state.Key == curr.m_CurrentStateName;
+                    bool pushed = GUILayout.Toggle(current, $"{lay.LayerIndex} - {state.Key}", "Button");
+                    if (pushed && !current)
                     {
                         avatar.m_Animator.Play(state.Key, lay.LayerIndex);
                         PlayerAnimatorCore.PlayState(lay.LayerIndex, state.Key);
@@ -136,6 +156,20 @@ namespace AvatarAnimator
                 if (i % AlignButtons != 0) GUILayout.EndHorizontal();
             }
 
+            if (HasHealth)
+            {
+                GUILayout.Space(20);
+                GUILayout.Label($"Avatar Health ({Math.Round(Health * 100)}%)");
+                var health = GUILayout.HorizontalSlider(Health, 0.0f, 1.0f);
+                if (Health != health)
+                {
+                    avatar.m_Animator.SetFloat("Health", health);
+                    Health = health;
+                }
+                GUILayout.Space(20);
+            }
+
+            GUILayout.Space(20);
             foreach (var trans in avatar.m_Data.TransitionsData)
             {
                 switch (trans.Value.Type)

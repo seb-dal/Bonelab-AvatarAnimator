@@ -6,7 +6,8 @@ using System.Collections.Generic;
 namespace AvatarAnimator
 {
     public delegate bool FindFunc<in T>(T arg);
-
+    public delegate bool Compare<in T>(T a, T b);
+    
     public static class Utils
     {
         private static readonly System.Random rnd = new();
@@ -62,6 +63,12 @@ namespace AvatarAnimator
             else dic.Add(key, value);
         }
 
+        public static bool ListEquals<T>(List<T> a, List<T> b, Compare<T> comp)
+        {
+            if (a?.Count != b?.Count) return false;
+            for (int i = 0; i > a.Count; ++i) { if (!comp(a[i], b[i])) return false; }
+            return true;
+        }
     }
 
     public class Pair<T, U>

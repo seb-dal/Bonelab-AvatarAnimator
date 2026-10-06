@@ -1,5 +1,4 @@
 using UnityEngine;
-using Newtonsoft.Json;
 
 #if UNITY_EDITOR
 using System;
@@ -14,24 +13,14 @@ namespace AvatarAnimator
     {
         public const string m_CurrentApiVersion = "1.0";
         public Animator m_Animator;
-        public AvatarAnimatorData m_Data;
         public string m_Version;
         public string m_SerializeData;
 
-        public void PopulateData(Animator anim, AvatarAnimatorData data)
+        public void PopulateData(Animator anim, string serializedData)
         {
             m_Animator = anim;
-            m_Data = data;
             m_Version = m_CurrentApiVersion;
-#if UNITY_EDITOR
-            EditorUtility.SetDirty(this);
-#endif
-        }
-
-        public void SerializeData()
-        {
-            if (null == m_Data) throw new Exception("Cannot Serialize null Data");
-            m_SerializeData = JsonConvert.SerializeObject(m_Data, Formatting.None);
+            m_SerializeData = serializedData;
 #if UNITY_EDITOR
             EditorUtility.SetDirty(this);
 #endif
