@@ -35,7 +35,7 @@ namespace AvatarAnimator
         private static AvatarAnimatorData m_Data;
 
         public static event StateChange OnStateChange;
-        public static PlayerHealthGetterFunc getPlayerHealth = () => 1.0f;
+        public static PlayerHealthGetterFunc GetPlayerHealth = () => 1.0f;
 
 
         public static void SetAvatar(Animator animator, AvatarAnimatorData data)
@@ -124,7 +124,7 @@ namespace AvatarAnimator
                     }
                 case ConditionType.Health:
                     {
-                        var healthValue = getPlayerHealth();
+                        var healthValue = GetPlayerHealth();
                         m_Animator.SetFloat(cond.Name, healthValue);
                         return Utils.Is(cond.Mode, healthValue, cond.Threshold);
                     }

@@ -35,7 +35,6 @@ namespace AvatarAnimator
             EntityData data = new();
             data.m_Source = EntityDataSources.Player;
             data.m_RigManager = Player.RigManager;
-            data.SetBarcode();
             data.SetId();
             data.UpdateAvatar();
             return data;
@@ -46,13 +45,13 @@ namespace AvatarAnimator
             data.m_Source = EntityDataSources.Mirror;
             data.m_Mirror = mirror;
             data.m_RigManager = mirror.rigManager;
-            data.SetBarcode();
             data.SetId();
+            data.UpdateAvatar();
             return data;
         }
 
         public AvatarAnimatorDataContainer Container { get => m_Cont; }
-        public Animator Animator { get => m_Cont.m_Animator; }
+        public Animator Animator { get => m_Cont?.m_Animator; }
         public AvatarAnimatorData Data { get => m_Data; }
         public bool HasAvatarAnimatorData { get => null != m_Cont && null != m_Data; }
         public Il2CppSLZ.VRMK.Avatar Avatar { get => m_Avatar; }
@@ -77,7 +76,6 @@ namespace AvatarAnimator
             };
         }
 
-        protected virtual void SetBarcode() { m_Barcode = m_RigManager?.AvatarCrate?.Barcode; }
         protected virtual void SetId()
         {
             try
@@ -94,6 +92,7 @@ namespace AvatarAnimator
         /// <summary> Update the avatar and the AvatarAnimatorDataContainer if found </summary>
         public void UpdateAvatar()
         {
+            m_Barcode = m_RigManager?.AvatarCrate?.Barcode;
             SetAvatar();
             if (EntityDataSources.Invalid != m_Source)
                 m_Cont = m_Avatar.gameObject.GetComponent<AvatarAnimatorDataContainer>();

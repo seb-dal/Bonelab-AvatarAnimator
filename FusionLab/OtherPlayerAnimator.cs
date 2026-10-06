@@ -84,7 +84,6 @@ namespace AvatarAnimator.FusionLab
         public void AddMirror(EntityData data)
         {
             m_mirrorAnimators.Add(data);
-            data.UpdateAvatar();
 
             if (!m_player.IsValid) return;
             foreach (var layer in m_States)
@@ -96,7 +95,8 @@ namespace AvatarAnimator.FusionLab
         }
         public void RemoveMirror(EntityData data) { m_mirrorAnimators.Remove(data); }
         public void ClearMirrors() { m_mirrorAnimators.Clear(); }
-        public bool IsMe() => m_player.IsMe();
+        public bool IsMe { get => null != m_player?.Data && m_player.IsValid; }
+        public bool IsValid { get => m_player.IsValid; }
     }
 
     public class OtherPlayerData : EntityData
@@ -112,13 +112,12 @@ namespace AvatarAnimator.FusionLab
             data.m_PlayerId = id;
             data.m_NetworkPlayer = player;
             data.m_RigManager = player.RigRefs.RigManager;
-            data.SetBarcode();
             data.m_id = data.m_PlayerId.SmallID;
             data.UpdateAvatar();
             return data;
         }
 
-        public bool IsMe() => m_PlayerId.IsMe;
+        public bool IsMe { get => m_PlayerId.IsMe; }
         protected override void SetAvatar() { m_Avatar = m_RigManager.avatar; }
     }
 }
