@@ -48,7 +48,6 @@ namespace AvatarAnimator
             data.m_RigManager = mirror.rigManager;
             data.SetBarcode();
             data.SetId();
-            //data.UpdateAvatar();
             return data;
         }
 
