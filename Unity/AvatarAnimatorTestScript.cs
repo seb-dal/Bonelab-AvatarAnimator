@@ -1,7 +1,6 @@
 using System;
 using UnityEngine;
 using UnityEditor;
-using Newtonsoft.Json;
 using System.Collections.Generic;
 
 #if IS_AVATAR_ANIMATOR_CORE_MOD
@@ -145,8 +144,8 @@ namespace AvatarAnimator
                 {
                     if (i % AlignButtons == 0) GUILayout.BeginHorizontal();
                     bool current = state.Key == curr.m_CurrentStateName;
-                    bool res = GUILayout.Toggle(state.Key == curr.m_CurrentStateName, $"{lay.LayerIndex} - {state.Key}", "Button");
-                    if (res && state.Key != curr.m_CurrentStateName)
+                    bool pushed = GUILayout.Toggle(current, $"{lay.LayerIndex} - {state.Key}", "Button");
+                    if (pushed && !current)
                     {
                         avatar.m_Animator.Play(state.Key, lay.LayerIndex);
                         PlayerAnimatorCore.PlayState(lay.LayerIndex, state.Key);
